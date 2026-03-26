@@ -1,0 +1,51 @@
+General Info
+Main focus: AI/Technology solutions for CTC/Retail
+Organizers: EPAM
+Date: Mar 2026
+Format: Virtual
+
+
+Timeline
+Registration Period 9th-18th Mar 2026.
+More information you can find on the Timeline Page.
+
+Teams Registration
+Each team must appoint a captain to register the team and communicate with organizers and experts.
+Participants must be registered through the official Hackathon Registration Site before the hackathon begins.
+Teams should be formed based on the following rules:
+
+Teams must consist of 1-8 members.
+Teams can participate online or offline.
+Each team will contain CTC team members only.
+Ideas must be practical and feasible to implement beyond the hackathon.
+Participants are expected to significantly leverage AI coding tools (Copilot, Claude, etc.) during development. Clearly describe how GenAI / Agentic solutions will be used while submitting your idea.
+
+Judging Criteria
+Projects will be evaluated on the following criteria (as an example):
+
+Technology and Application: Integration and viability of AI, ML and LLM technologies.
+
+Landscape and Positioning: Market/CTC fit and competitive advantage.
+
+Relevance: Market/CTC need, scale and use case clarity.
+
+Resonance: Human-centric design and long-term solution viability.
+
+Revolutionary Impact: Innovation and significant market advancement.
+
+*Projects should be developed during the hackathon and presented in the form of a Proof of Concept solutions.
+
+
+Pitch delivery should follow 5+5+1 Rule
+The 5+5+1 rule is a practical framework for managing time during hackathon presentations, ensuring smooth transitions and efficient use of the schedule.
+
+5 Minutes for Presentation: Each team has 5 minutes to pitch their project, focusing on key elements such as the problem, solution, implementation, and impact. This keeps presentations concise and engaging.
+5 Minutes for Questions: After the pitch, judges or the audience have 5 minutes to ask questions, clarify details, and provide feedback. This allows teams to elaborate on their ideas and demonstrate their depth of understanding.
+1 Minute for Transition: A 1-minute buffer is allocated for transitioning between teams, ensuring the next group is ready to present without delays.
+
+Winners
+Winners will be announced in Apr 2026.
+
+
+
+By participating in the Hackathon, all participants agree to abide by these rules and understand that any breach may result in disqualification from the event.

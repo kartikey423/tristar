@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "mock-triangle-data": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@tristar/mock-triangle-data@latest"
+      ],
+      "description": "Provides synthetic Triangle loyalty member profiles and historical offer performance data for TriStar hackathon development",
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  }
+}

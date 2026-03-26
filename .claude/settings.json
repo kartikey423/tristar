@@ -1,0 +1,73 @@
+{
+  "hooks": {
+    "prePRCreate": [
+      {
+        "name": "security-scan",
+        "description": "Scan code for security vulnerabilities before creating PR",
+        "command": "bash scripts/security-scan.sh",
+        "continueOnFailure": false
+      },
+      {
+        "name": "code-review",
+        "description": "Automated code review by reviewer subagent with verification loops",
+        "command": "echo 'Code review: Run subagent-verification-loops pattern for fresh-context review'",
+        "continueOnFailure": false
+      }
+    ],
+    "postCommit": [
+      {
+        "name": "update-memory",
+        "description": "Append commit message to MEMORY.md for cross-session learnings",
+        "command": "echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Commit: $(git log -1 --pretty=%B)\" >> .claude/memory/MEMORY.md",
+        "continueOnFailure": true
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(pytest *)",
+      "Bash(pip install *)",
+      "Bash(git status)",
+      "Bash(git diff)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Read(src/**)",
+      "Read(tests/**)",
+      "Read(docs/**)",
+      "Read(.claude/**)",
+      "Write(src/**)",
+      "Write(tests/**)",
+      "Write(docs/**)",
+      "Edit(src/**)",
+      "Edit(tests/**)",
+      "Edit(docs/**)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean -f *)",
+      "Write(.env)",
+      "Write(**/*.env)",
+      "Write(**/.env.*)",
+      "Edit(.env)",
+      "Edit(**/*.env)",
+      "Write(All Demo Files-20260325T171750Z-3-001/**)",
+      "Edit(All Demo Files-20260325T171750Z-3-001/**)"
+    ]
+  },
+  "contextBudget": {
+    "maxTokens": 200000,
+    "systemPromptPercent": 20,
+    "codebasePercent": 30,
+    "taskPercent": 50
+  },
+  "autoMemory": {
+    "enabled": true,
+    "location": ".claude/memory/MEMORY.md",
+    "maxLines": 200
+  }
+}

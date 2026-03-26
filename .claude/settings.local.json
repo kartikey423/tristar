@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -lh *.pdf)",
+      "Bash(chmod:*)",
+      "Bash(bash scripts/security-scan.sh)"
+    ]
+  }
+}
