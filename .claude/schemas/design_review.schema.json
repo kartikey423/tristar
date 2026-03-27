@@ -1,0 +1,252 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "design_review.schema.json",
+  "title": "Design Review",
+  "description": "Structured output from Design Critic (Agent 5a)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["meta", "summary", "sign_off"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "feature_id",
+        "created_at",
+        "review_type",
+        "design_spec_version",
+        "reviewer",
+        "review_mode",
+        "codebase_reviewed"
+      ],
+      "properties": {
+        "feature_id": {
+          "type": "string",
+          "pattern": "^FEAT-[0-9]{4}$"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "review_type": {
+          "type": "string",
+          "const": "design_review"
+        },
+        "design_spec_version": {
+          "type": "string"
+        },
+        "reviewer": {
+          "type": "string"
+        },
+        "review_mode": {
+          "type": "string",
+          "enum": ["pure_design", "retroactive_with_codebase"]
+        },
+        "codebase_reviewed": {
+          "type": "boolean"
+        },
+        "codebase_location": {
+          "type": "string"
+        }
+      }
+    },
+    "codebase_validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "note": { "type": "string" },
+        "existing_components_verified": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "component": { "type": "string" },
+              "file": { "type": "string" },
+              "status": { "type": "string" },
+              "design_spec_accurate": { "type": "boolean" },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "gaps_verified": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "gap_id": { "type": "string" },
+              "verified": { "type": "boolean" },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "discrepancies_found": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "issue": { "type": "string" },
+              "severity": { "type": "string" },
+              "recommendation": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overall_assessment", "confidence_score", "critical_issues", "major_concerns", "minor_suggestions", "recommendation"],
+      "properties": {
+        "overall_assessment": {
+          "type": "string",
+          "enum": ["approve", "approve_with_concerns", "reject"]
+        },
+        "confidence_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "critical_issues": { "type": "integer" },
+        "major_concerns": { "type": "integer" },
+        "minor_suggestions": { "type": "integer" },
+        "recommendation": { "type": "string" }
+      }
+    },
+    "architectural_review": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "category": { "type": "string" },
+          "severity": { "type": "string" },
+          "finding": { "type": "string" },
+          "risk": { "type": "string" },
+          "recommendation": { "type": "string" },
+          "effort": { "type": "string" },
+          "blocking": { "type": "boolean" },
+          "alternatives": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "assumption_challenges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "assumption_id": { "type": "string" },
+          "assumption_text": { "type": "string" },
+          "challenge": { "type": "string" },
+          "likelihood_of_being_wrong": { "type": "string" },
+          "impact_if_wrong": { "type": "string" },
+          "evidence": { "type": "string" },
+          "recommendation": { "type": "string" },
+          "validation_strategy": { "type": "string" },
+          "fallback_plan": { "type": "string" },
+          "blocking": { "type": "boolean" }
+        }
+      }
+    },
+    "complexity_concerns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "area": { "type": "string" },
+          "current_complexity": { "type": "string" },
+          "concern": { "type": "string" },
+          "simpler_alternative": { "type": "string" },
+          "complexity_justified": { "type": "boolean" },
+          "recommendation": { "type": "string" },
+          "effort_saved": { "type": "string" },
+          "maintenance_saved": { "type": "string" }
+        }
+      }
+    },
+    "alternative_approaches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "area": { "type": "string" },
+          "current_approach": { "type": "string" },
+          "alternative": { "type": "string" },
+          "comparison": { "type": "object" },
+          "recommendation": { "type": "string" },
+          "estimated_effort_difference": { "type": "string" }
+        }
+      }
+    },
+    "missing_considerations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "area": { "type": "string" },
+          "missing": { "type": "string" },
+          "impact": { "type": "string" },
+          "examples": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "recommendation": { "type": "string" },
+          "blocking": { "type": "boolean" }
+        }
+      }
+    },
+    "design_quality_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clarity": { "type": "integer" },
+        "completeness": { "type": "integer" },
+        "soundness": { "type": "integer" },
+        "simplicity": { "type": "integer" },
+        "scalability": { "type": "integer" },
+        "maintainability": { "type": "integer" },
+        "overall": { "type": "integer" }
+      }
+    },
+    "positive_aspects": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "review_history": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "sign_off": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ready_for_implementation", "blocking_issues", "recommended_actions"],
+      "properties": {
+        "ready_for_implementation": { "type": "boolean" },
+        "blocking_issues": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "recommended_actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "estimated_refinement_time": { "type": "string" },
+        "next_review_needed": { "type": "boolean" },
+        "caveat": { "type": "string" }
+      }
+    }
+  }
+}

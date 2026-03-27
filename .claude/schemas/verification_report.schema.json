@@ -1,0 +1,317 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "verification_report.schema.json",
+  "title": "Verification Report",
+  "description": "Structured output from Verifier Agent - test results, quality checks, security findings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["meta", "summary", "requirement_coverage", "test_results", "quality_findings", "security_findings"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature_id", "created_at", "agent_version", "design_spec_ref", "implementation_ref"],
+      "properties": {
+        "feature_id": {
+          "type": "string",
+          "pattern": "^FEAT-[0-9]{4}$"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "agent_version": {
+          "type": "string",
+          "const": "2.0"
+        },
+        "design_spec_ref": {
+          "type": "string"
+        },
+        "implementation_ref": {
+          "type": "string",
+          "description": "Git commit SHA or branch reference"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "score", "blocking_issues", "total_issues"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["passed", "passed_with_warnings", "failed", "blocked"]
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "blocking_issues": {
+          "type": "integer"
+        },
+        "total_issues": {
+          "type": "integer"
+        },
+        "test_pass_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "coverage_percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "requirement_coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requirement_id", "status", "acceptance_criteria_results"],
+        "properties": {
+          "requirement_id": {
+            "type": "string",
+            "pattern": "^REQ-[0-9]{3}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["fully_covered", "partially_covered", "not_covered", "not_testable"]
+          },
+          "acceptance_criteria_results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["ac_id", "status"],
+              "properties": {
+                "ac_id": {
+                  "type": "string",
+                  "pattern": "^AC-[0-9]{3}$"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["passed", "failed", "skipped", "not_implemented"]
+                },
+                "test_ids": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "notes": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "test_results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit", "integration", "e2e"],
+      "properties": {
+        "unit": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "total": { "type": "integer" },
+            "passed": { "type": "integer" },
+            "failed": { "type": "integer" },
+            "skipped": { "type": "integer" },
+            "coverage": { "type": "number" },
+            "duration_ms": { "type": "integer" },
+            "failures": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["test_name", "file", "error"],
+                "properties": {
+                  "test_name": { "type": "string" },
+                  "file": { "type": "string" },
+                  "error": { "type": "string" },
+                  "expected": { "type": "string" },
+                  "actual": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "integration": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "total": { "type": "integer" },
+            "passed": { "type": "integer" },
+            "failed": { "type": "integer" },
+            "skipped": { "type": "integer" },
+            "duration_ms": { "type": "integer" },
+            "failures": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["test_name", "file", "error"],
+                "properties": {
+                  "test_name": { "type": "string" },
+                  "file": { "type": "string" },
+                  "error": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "e2e": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "total": { "type": "integer" },
+            "passed": { "type": "integer" },
+            "failed": { "type": "integer" },
+            "skipped": { "type": "integer" },
+            "duration_ms": { "type": "integer" },
+            "failures": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["test_name", "file", "error"],
+                "properties": {
+                  "test_name": { "type": "string" },
+                  "file": { "type": "string" },
+                  "error": { "type": "string" },
+                  "screenshot_url": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "quality_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "severity", "file", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^QF-[0-9]{3}$"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "code_smell",
+              "duplication",
+              "complexity",
+              "naming",
+              "solid_violation",
+              "pattern_violation",
+              "performance",
+              "accessibility",
+              "i18n",
+              "type_safety"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low", "info"]
+          },
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "description": { "type": "string" },
+          "suggestion": { "type": "string" },
+          "effort_hours": { "type": "number" }
+        }
+      }
+    },
+    "security_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "severity", "file", "description", "remediation"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^SF-[0-9]{3}$"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "owasp_a01_broken_access_control",
+              "owasp_a02_cryptographic_failures",
+              "owasp_a03_injection",
+              "owasp_a04_insecure_design",
+              "owasp_a05_security_misconfiguration",
+              "owasp_a06_vulnerable_components",
+              "owasp_a07_auth_failures",
+              "owasp_a08_data_integrity",
+              "owasp_a09_logging_failures",
+              "owasp_a10_ssrf",
+              "pci_dss",
+              "gdpr",
+              "pii_exposure"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"]
+          },
+          "cvss_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "cwe_id": { "type": "string" },
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "description": { "type": "string" },
+          "attack_vector": { "type": "string" },
+          "remediation": { "type": "string" },
+          "blocking": { "type": "boolean" }
+        }
+      }
+    },
+    "edge_case_coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["edge_case_id", "status"],
+        "properties": {
+          "edge_case_id": {
+            "type": "string",
+            "pattern": "^EC-[0-9]{3}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["tested", "not_tested", "failed"]
+          },
+          "test_id": { "type": "string" },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["priority", "action", "rationale"],
+        "properties": {
+          "priority": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "action": { "type": "string" },
+          "rationale": { "type": "string" },
+          "blocking": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}
