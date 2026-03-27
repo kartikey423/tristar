@@ -1,0 +1,346 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "risk_assessment.schema.json",
+  "title": "Risk Assessment",
+  "description": "Structured output from Critic Agent - adversarial analysis of the implementation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "summary",
+    "assumption_challenges",
+    "failure_modes",
+    "attack_scenarios",
+    "blind_spots",
+    "recommendations",
+    "sign_off"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature_id", "created_at", "agent_version"],
+      "properties": {
+        "feature_id": {
+          "type": "string",
+          "pattern": "^FEAT-[0-9]{4}$"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "agent_version": {
+          "type": "string",
+          "const": "2.0"
+        },
+        "artifacts_reviewed": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overall_risk_level", "confidence_score", "ship_recommendation"],
+      "properties": {
+        "overall_risk_level": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        "confidence_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "How confident is the critic in the assessment"
+        },
+        "ship_recommendation": {
+          "type": "string",
+          "enum": ["ship", "ship_with_monitoring", "fix_first", "redesign"]
+        },
+        "key_concerns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "maxItems": 5
+        }
+      }
+    },
+    "assumption_challenges": {
+      "type": "array",
+      "description": "Challenging the assumptions made in problem_spec",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["assumption_id", "challenge", "likelihood", "impact"],
+        "properties": {
+          "assumption_id": {
+            "type": "string",
+            "pattern": "^ASM-[0-9]{3}$"
+          },
+          "challenge": {
+            "type": "string",
+            "description": "What if this assumption is wrong?"
+          },
+          "likelihood": {
+            "type": "string",
+            "enum": ["unlikely", "possible", "likely", "certain"]
+          },
+          "impact": {
+            "type": "string",
+            "enum": ["negligible", "minor", "moderate", "severe", "catastrophic"]
+          },
+          "mitigation": {
+            "type": "string"
+          },
+          "monitoring_suggestion": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "failure_modes": {
+      "type": "array",
+      "description": "How can this feature fail?",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "mode", "trigger", "consequence", "likelihood", "severity"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^FM-[0-9]{3}$"
+          },
+          "mode": {
+            "type": "string",
+            "description": "What failure looks like"
+          },
+          "trigger": {
+            "type": "string",
+            "description": "What causes this failure"
+          },
+          "consequence": {
+            "type": "string",
+            "description": "Impact on user/business"
+          },
+          "likelihood": {
+            "type": "string",
+            "enum": ["rare", "unlikely", "possible", "likely", "certain"]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["negligible", "minor", "moderate", "severe", "catastrophic"]
+          },
+          "detection": {
+            "type": "string",
+            "description": "How would we know this happened?"
+          },
+          "prevention": {
+            "type": "string"
+          },
+          "recovery": {
+            "type": "string"
+          },
+          "related_component": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "attack_scenarios": {
+      "type": "array",
+      "description": "How could a malicious actor exploit this feature?",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "attacker_profile", "goal", "attack_vector", "steps", "likelihood", "impact"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^ATK-[0-9]{3}$"
+          },
+          "attacker_profile": {
+            "type": "string",
+            "enum": ["script_kiddie", "competitor", "insider", "nation_state", "automated_bot"]
+          },
+          "goal": {
+            "type": "string",
+            "description": "What the attacker wants to achieve"
+          },
+          "attack_vector": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "likelihood": {
+            "type": "string",
+            "enum": ["rare", "unlikely", "possible", "likely"]
+          },
+          "impact": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "current_mitigation": {
+            "type": "string"
+          },
+          "mitigation_gap": {
+            "type": "string"
+          },
+          "recommended_mitigation": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "blind_spots": {
+      "type": "array",
+      "description": "What hasn't been considered?",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "area", "concern", "recommendation"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^BS-[0-9]{3}$"
+          },
+          "area": {
+            "type": "string",
+            "enum": [
+              "scalability",
+              "edge_cases",
+              "user_behavior",
+              "third_party_dependency",
+              "data_consistency",
+              "compliance",
+              "accessibility",
+              "performance",
+              "maintainability",
+              "observability"
+            ]
+          },
+          "concern": {
+            "type": "string"
+          },
+          "questions_to_answer": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "recommendation": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "stress_test_scenarios": {
+      "type": "array",
+      "description": "How does this behave under extreme conditions?",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["scenario", "expected_behavior", "actual_risk"],
+        "properties": {
+          "scenario": {
+            "type": "string"
+          },
+          "expected_behavior": {
+            "type": "string"
+          },
+          "actual_risk": {
+            "type": "string",
+            "enum": ["handled", "degraded", "unknown", "will_fail"]
+          },
+          "recommendation": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "dependency_risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dependency", "risk", "mitigation"],
+        "properties": {
+          "dependency": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["npm_package", "api", "service", "infrastructure", "human"]
+          },
+          "risk": {
+            "type": "string"
+          },
+          "likelihood": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          },
+          "mitigation": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["priority", "category", "action", "rationale", "effort"],
+        "properties": {
+          "priority": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "1 = must do before ship, 5 = nice to have"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["security", "reliability", "performance", "compliance", "observability", "testing"]
+          },
+          "action": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "effort": {
+            "type": "string",
+            "enum": ["trivial", "small", "medium", "large", "epic"]
+          },
+          "blocking": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "sign_off": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ready_for_production", "conditions", "monitoring_required", "rollback_triggers"],
+      "properties": {
+        "ready_for_production": {
+          "type": "boolean"
+        },
+        "conditions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Conditions that must be met before production"
+        },
+        "monitoring_required": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "What to monitor after launch"
+        },
+        "rollback_triggers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Conditions that should trigger rollback"
+        }
+      }
+    }
+  }
+}
