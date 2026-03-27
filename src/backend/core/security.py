@@ -9,7 +9,7 @@ from typing import Optional
 
 import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthCredentials, HTTPBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from src.backend.core.config import settings
@@ -37,7 +37,7 @@ def _decode_token(token: str) -> dict:
 
 
 async def get_current_user(
-    credentials: HTTPAuthCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> AuthUser:
     """Extract and validate the authenticated user from the Bearer token."""
     payload = _decode_token(credentials.credentials)

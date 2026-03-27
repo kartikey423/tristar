@@ -128,6 +128,11 @@ class PurchaseEventHandler:
         F-008 FIX: member history, nearby stores, and weather are fetched
         concurrently via asyncio.gather to minimize enrichment latency.
         """
+        # Gate 0: Reject refund events — no offer should be triggered for a refund
+        if event.is_refund:
+            logger.debug("Purchase event skipped: refund", extra={"event_id": event.event_id})
+            return None
+
         # Gate 1: Feature flag + pilot check
         allowed, reason = self._is_allowed(event.member_id)
         if not allowed:

@@ -104,7 +104,7 @@ class TestGenerateEndpoint:
             "/api/designer/generate",
             json={"objective": "Reactivate lapsed high-value members"},
         )
-        assert response.status_code == 403  # No bearer scheme = 403
+        assert response.status_code == 401  # No bearer scheme = 401 (FastAPI 0.135+)
 
     async def test_generate_returns_403_for_wrong_role(self, client):
         with patch(
@@ -166,25 +166,27 @@ class TestGenerateEndpoint:
 @pytest.mark.integration
 class TestSuggestionsEndpoint:
     async def test_suggestions_returns_list(self, client):
-        with patch("src.backend.api.designer.get_inventory_service") as mock_factory:
-            from src.backend.models.offer_brief import InventorySuggestion
+        from src.backend.api.deps import get_inventory_service
+        from src.backend.models.offer_brief import InventorySuggestion
 
-            mock_service = MagicMock()
-            mock_service.get_suggestions = MagicMock(
-                return_value=[
-                    InventorySuggestion(
-                        product_id="P001",
-                        product_name="Winter Jacket",
-                        category="outerwear",
-                        store="Sport Chek",
-                        units_in_stock=620,
-                        urgency="high",
-                        suggested_objective="Clear Winter Jacket overstock — 620 units in stock",
-                    )
-                ]
-            )
-            mock_factory.return_value = mock_service
+        mock_service = MagicMock()
+        mock_service.get_suggestions = MagicMock(
+            return_value=[
+                InventorySuggestion(
+                    product_id="P001",
+                    product_name="Winter Jacket",
+                    category="outerwear",
+                    store="Sport Chek",
+                    units_in_stock=620,
+                    urgency="high",
+                    suggested_objective="Clear Winter Jacket overstock — 620 units in stock",
+                )
+            ]
+        )
 
+        # Use app.dependency_overrides so FastAPI uses the mock for this request
+        app.dependency_overrides[get_inventory_service] = lambda: mock_service
+        try:
             with patch(
                 "src.backend.core.security._decode_token",
                 return_value={"sub": "user-1", "role": "marketing"},
@@ -193,6 +195,8 @@ class TestSuggestionsEndpoint:
                     "/api/designer/suggestions",
                     headers={"Authorization": "Bearer test-token"},
                 )
+        finally:
+            app.dependency_overrides.pop(get_inventory_service, None)
 
         assert response.status_code == 200
         data = response.json()

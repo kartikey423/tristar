@@ -31,9 +31,9 @@ class TestRateLimiting:
         now = datetime(2026, 3, 27, 10, 0, 0)
         service.record_delivery("M001", now=now)
 
-        # Try 7 hours later — outside 6h window
+        # Try 7 hours later — outside 6h window; use high-value amount to bypass 24h dedup
         later = now + timedelta(hours=7)
-        allowed, reason = service.can_deliver("M001", amount=50.0, now=later)
+        allowed, reason = service.can_deliver("M001", amount=150.0, now=later)
         assert allowed is True
 
 

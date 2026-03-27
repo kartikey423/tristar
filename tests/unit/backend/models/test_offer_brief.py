@@ -21,12 +21,12 @@ FIXTURES = json.loads(
 
 @pytest.fixture
 def valid_offer_data():
-    return FIXTURES["valid_marketer_offer"]
+    return dict(FIXTURES["valid_marketer_offer"])
 
 
 @pytest.fixture
 def purchase_triggered_data():
-    return FIXTURES["purchase_triggered_offer"]
+    return dict(FIXTURES["purchase_triggered_offer"])
 
 
 class TestOfferBriefValidation:
@@ -59,6 +59,8 @@ class TestOfferBriefValidation:
 
     def test_trigger_type_enum_validates(self, valid_offer_data):
         valid_offer_data["trigger_type"] = "purchase_triggered"
+        valid_offer_data["status"] = "active"
+        valid_offer_data["valid_until"] = "2026-03-27T14:00:00Z"
         offer = OfferBrief(**valid_offer_data)
         assert offer.trigger_type == TriggerType.purchase_triggered
 
