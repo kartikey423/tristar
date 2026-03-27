@@ -191,8 +191,8 @@ class ContextScoringService:
         # Clamp to [0, 100]
         total = max(0.0, min(100.0, total))
 
-        # Threshold is strict: must be GREATER than threshold (not equal)
-        should_trigger = total > self._threshold
+        # EC-016: score at exactly threshold triggers (>= per problem spec)
+        should_trigger = total >= self._threshold
 
         return ContextScore(
             total=round(total, 2),

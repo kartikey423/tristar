@@ -104,10 +104,9 @@ class TestContextScoring:
         assert score.total > 70.0
         assert score.should_trigger is True
 
-    def test_score_at_exactly_70_does_not_trigger(self):
-        """Score at exactly threshold should NOT trigger (strict greater-than)."""
+    def test_score_at_exactly_70_triggers(self):
+        """EC-016: Score at exactly threshold should trigger (>= per problem spec)."""
         service = ContextScoringService(threshold=70.0)
-        # Manipulate scoring to land exactly at 70 — use low everything
         context = make_context(
             event=make_event(
                 amount=5.0,
@@ -121,12 +120,12 @@ class TestContextScoring:
             weather=None,
         )
         score = service.score(context)
-        # Should be well below 70 with these inputs — just verify strict threshold
+        # Verify >= semantics: at exactly 70.0, should_trigger must be True
         if score.total == 70.0:
-            assert score.should_trigger is False
+            assert score.should_trigger is True
         else:
-            # Non-70 result is fine — just ensure strict comparison
-            assert score.should_trigger == (score.total > 70.0)
+            # Non-70 result is fine — verify >= comparison holds
+            assert score.should_trigger == (score.total >= 70.0)
 
     def test_score_below_70_does_not_trigger(self):
         """Low-value purchase far from any CTC store should not trigger."""
