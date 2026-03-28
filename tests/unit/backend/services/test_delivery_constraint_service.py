@@ -11,7 +11,8 @@ from src.backend.services.delivery_constraint_service import DeliveryConstraintS
 class TestRateLimiting:
     def test_allows_first_delivery(self):
         service = DeliveryConstraintService()
-        allowed, reason = service.can_deliver("M001", amount=50.0)
+        now = datetime(2026, 3, 27, 14, 0, 0)  # 2pm — outside quiet hours
+        allowed, reason = service.can_deliver("M001", amount=50.0, now=now)
         assert allowed is True
         assert reason is None
 
