@@ -1,0 +1,11 @@
+product_id,product_name,category,store,units_in_stock,reorder_point,unit_price,urgency
+P001,North Face Winter Jacket,outerwear,Sport Chek,620,100,249.99,high
+P002,Nike Running Shoes (Men),footwear,Sport Chek,540,150,129.99,high
+P003,Carhartt Work Boots,footwear,Mark's,512,120,189.99,high
+P004,Helly Hansen Rain Jacket,outerwear,Mark's,485,80,179.99,medium
+P005,Coleman 4-Person Tent,camping,Canadian Tire,430,60,299.99,medium
+P006,Weber Genesis Grill,outdoor_cooking,Canadian Tire,395,40,899.99,medium
+P007,Yeti Rambler 20oz,drinkware,Sport Chek,380,200,44.99,medium
+P008,Lululemon Align Leggings,activewear,Sport Chek,290,100,118.00,low
+P009,Stanley Fatmax Toolset,tools,Canadian Tire,270,50,179.99,low
+P010,Ariat Work Pants,workwear,Mark's,245,80,89.99,low
