@@ -18,6 +18,9 @@ dependencies = [
     "PyJWT>=2.8.0",
     "loguru>=0.7.2",
     "python-dotenv>=1.0.0",
+    "redis>=5.0.0",
+    "aiosqlite>=0.21.0",
+    "sqlalchemy[asyncio]>=2.0",
 ]
 
 [project.optional-dependencies]
