@@ -9,7 +9,7 @@ DeliveryConstraintService rate limit checks.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -101,6 +101,8 @@ async def list_offers(
 
     if since:
         since_dt = datetime.fromisoformat(since)
+        if since_dt.tzinfo is None:
+            since_dt = since_dt.replace(tzinfo=timezone.utc)
         offers = [o for o in offers if o.created_at >= since_dt]
 
     # Note: member_id filtering would require storing member_id on OfferBrief.
