@@ -3,7 +3,19 @@
     "allow": [
       "Bash(ls -lh *.pdf)",
       "Bash(chmod:*)",
-      "Bash(bash scripts/security-scan.sh)"
+      "Bash(bash scripts/security-scan.sh)",
+      "Skill(sdlc-pipeline)",
+      "Skill(sdlc-architecture)",
+      "Skill(sdlc-design-review)",
+      "Skill(sdlc-impl-planning)",
+      "Skill(sdlc-verify)",
+      "Bash(pip --version)",
+      "Bash(python:*)",
+      "Skill(code-review)",
+      "Skill(loyalty-fraud-detection)",
+      "Skill(sdlc-risk)",
+      "Skill(create-pr)",
+      "Skill(sdlc-requirements)"
     ]
   }
 }

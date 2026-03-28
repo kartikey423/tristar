@@ -1,6 +1,6 @@
 {
   "feature": "designer-layer",
-  "current_phase": "pr",
+  "current_phase": "done",
   "phases": {
     "requirements": "completed",
     "architecture": "completed",
@@ -11,7 +11,7 @@
     "review": "completed",
     "verification": "completed",
     "risk": "completed",
-    "pr": "pending"
+    "pr": "completed"
   },
   "iteration_counts": {
     "design_review_to_architecture": 0,
