@@ -28,6 +28,16 @@ from src.backend.services.hub_store import HubStore, OfferAlreadyExistsError, Re
 
 router = APIRouter()
 
+# Registry for fire-and-forget audit tasks — prevents GC before completion.
+_audit_tasks: set[asyncio.Task] = set()
+
+
+def _fire_audit(coro) -> None:
+    """Schedule a coroutine as a background task, retaining a reference until done."""
+    task = asyncio.create_task(coro)
+    _audit_tasks.add(task)
+    task.add_done_callback(_audit_tasks.discard)
+
 
 class ListOffersResponse(BaseModel):
     offers: list[OfferBrief]
@@ -83,7 +93,7 @@ async def save_offer(
 
         await hub_store.save(offer)
 
-        asyncio.create_task(
+        _fire_audit(
             hub_audit.log_event(
                 HubAuditEvent(
                     offer_id=offer.offer_id,
@@ -145,7 +155,7 @@ async def get_offer(
                 detail=f"Offer {offer_id} not found",
             )
 
-        asyncio.create_task(
+        _fire_audit(
             hub_audit.log_event(
                 HubAuditEvent(
                     offer_id=offer_id,
@@ -253,7 +263,7 @@ async def update_offer_status(
                 detail="Hub store unavailable",
             )
 
-        asyncio.create_task(
+        _fire_audit(
             hub_audit.log_event(
                 HubAuditEvent(
                     offer_id=offer_id,
