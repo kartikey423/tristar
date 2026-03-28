@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     # ── Hub API ────────────────────────────────────────────────────────────────
     HUB_API_URL: str = "http://localhost:8000/api/hub"
 
+    # ── Hub Redis store ────────────────────────────────────────────────────────
+    HUB_REDIS_ENABLED: bool = False
+    REDIS_URL: str = "redis://localhost:6379"
+
+    # ── Audit log ──────────────────────────────────────────────────────────────
+    DATABASE_URL: str = "sqlite+aiosqlite:///tristar.db"
+
     # ── Designer API (used by Scout for internal service calls) ───────────────
     DESIGNER_API_URL: str = "http://localhost:8000"
 

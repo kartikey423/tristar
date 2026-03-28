@@ -1,8 +1,11 @@
 """TriStar FastAPI application entry point.
 
-F-004 FIX: Background asyncio task `expire_offers_task()` sweeps the Hub
-in-memory store every 300s, transitioning active→expired for offers where
-valid_until < now.
+COMP-007: Background asyncio task `_expire_offers_task()` sweeps the Hub
+store every OFFER_EXPIRY_SWEEP_SECONDS, transitioning active→expired for
+offers where valid_until < now. Uses hub_store.list() + hub_store.update()
+instead of direct dict access (R-006 fix).
+
+GET /health extended with "redis": "ok" | "degraded" via hub_store.ping() (AC-033/034).
 """
 
 from __future__ import annotations
@@ -11,21 +14,21 @@ import asyncio
 import sys
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
 
 from src.backend.api import designer, hub, scout
-from src.backend.api.hub import _store as hub_store
-from src.backend.api.deps import get_hub_client
+from src.backend.api.deps import get_hub_client, get_hub_store
 from src.backend.core.config import settings
 from src.backend.models.offer_brief import OfferStatus
 from src.backend.services.claude_api import ClaudeApiError, ClaudeResponseParseError
 from src.backend.services.fraud_check_service import FraudBlockedError
 from src.backend.services.hub_api_client import HubSaveError
+from src.backend.services.hub_store import HubStore
 
 
 # ─── Logging Setup ────────────────────────────────────────────────────────────
@@ -40,29 +43,45 @@ def _setup_logging() -> None:
     )
 
 
-# ─── F-004: Background offer expiry task ─────────────────────────────────────
+# ─── Background offer expiry task ─────────────────────────────────────────────
 
 async def _expire_offers_task() -> None:
-    """Sweep hub store every OFFER_EXPIRY_SWEEP_SECONDS and expire stale offers."""
+    """Sweep hub store every OFFER_EXPIRY_SWEEP_SECONDS and expire stale offers.
+
+    TODO(F-006): O(n) scan — optimize with Redis sorted set by valid_until in production.
+    """
     while True:
         await asyncio.sleep(settings.OFFER_EXPIRY_SWEEP_SECONDS)
-        now = datetime.utcnow()
-        expired_count = 0
+        now = datetime.now(timezone.utc)
+        store = get_hub_store()
 
-        for offer_id, offer in list(hub_store.items()):
-            if (
-                offer.status == OfferStatus.active
-                and offer.valid_until is not None
-                and offer.valid_until < now
-            ):
-                hub_store[offer_id] = offer.model_copy(
-                    update={"status": OfferStatus.expired}
-                )
-                expired_count += 1
-                logger.info(
-                    "Offer expired",
-                    extra={"offer_id": offer_id, "valid_until": offer.valid_until.isoformat()},
-                )
+        try:
+            active_offers = await store.list(status_filter=OfferStatus.active)
+        except Exception as e:
+            logger.warning(f"expire_sweep_list_failed: {e}")
+            continue
+
+        expired_count = 0
+        for offer in active_offers:
+            if offer.valid_until is None:
+                continue
+            # Normalize valid_until to UTC-aware for comparison
+            valid_until = offer.valid_until
+            if valid_until.tzinfo is None:
+                valid_until = valid_until.replace(tzinfo=timezone.utc)
+            if valid_until < now:
+                try:
+                    await store.update(offer.model_copy(update={"status": OfferStatus.expired}))
+                    expired_count += 1
+                    logger.info(
+                        "Offer expired",
+                        extra={"offer_id": offer.offer_id, "valid_until": valid_until.isoformat()},
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"expire_offer_update_failed: {e}",
+                        extra={"offer_id": offer.offer_id},
+                    )
 
         if expired_count > 0:
             logger.info(f"Expiry sweep complete: {expired_count} offer(s) expired")
@@ -92,7 +111,7 @@ async def lifespan(app: FastAPI):
     _validate_production_secrets()
     logger.info(f"TriStar API starting (environment={settings.ENVIRONMENT})")
 
-    # Start background expiry task (F-004)
+    # Start background expiry task
     expiry_task = asyncio.create_task(_expire_offers_task())
     logger.info(
         f"Offer expiry task started (sweep every {settings.OFFER_EXPIRY_SWEEP_SECONDS}s)"
@@ -189,9 +208,12 @@ app.include_router(hub.router, prefix="/api/hub", tags=["Hub"])
 
 
 @app.get("/health", tags=["System"])
-async def health_check() -> dict:
+async def health_check(hub_store: HubStore = Depends(get_hub_store)) -> dict:
+    """AC-033/034: Include redis status from hub_store.ping()."""
+    redis_ok = await hub_store.ping()
     return {
         "status": "healthy",
         "environment": settings.ENVIRONMENT,
         "purchase_trigger_enabled": settings.PURCHASE_TRIGGER_ENABLED,
+        "redis": "ok" if redis_ok else "degraded",
     }

@@ -12,9 +12,12 @@ from src.backend.api.deps import (
     get_audit_service,
     get_claude_service,
     get_fraud_service,
+    get_hub_audit_service,
     get_hub_client,
+    get_hub_store,
     get_inventory_service,
 )
+from src.backend.api.hub import _validate_transition
 from src.backend.core.security import AuthUser, require_marketing_role, require_system_role
 from src.backend.models.offer_brief import (
     ApproveOfferResponse,
@@ -29,6 +32,8 @@ from src.backend.services.audit_log_service import AuditLogService
 from src.backend.services.claude_api import ClaudeApiError, ClaudeApiService, ClaudeResponseParseError
 from src.backend.services.fraud_check_service import FraudBlockedError, FraudCheckService
 from src.backend.services.hub_api_client import HubApiClient, HubSaveError
+from src.backend.services.hub_audit_service import HubAuditEvent, HubAuditService
+from src.backend.services.hub_store import HubStore, OfferAlreadyExistsError, RedisUnavailableError
 from src.backend.services.inventory_service import InventoryService
 
 router = APIRouter()
@@ -79,6 +84,7 @@ async def generate_offer_brief(
     claude: ClaudeApiService = Depends(get_claude_service),
     fraud: FraudCheckService = Depends(get_fraud_service),
     audit: AuditLogService = Depends(get_audit_service),
+    hub_store: HubStore = Depends(get_hub_store),
 ) -> OfferBrief:
     start = time.monotonic()
     try:
@@ -105,7 +111,22 @@ async def generate_offer_brief(
 
     duration_ms = (time.monotonic() - start) * 1000
     audit.log_generation(offer, member_id=user.user_id, duration_ms=duration_ms)
+
+    # REQ-005: Block fraud before saving to Hub
     _raise_if_fraud_blocked(fraud_result, offer.offer_id, user.user_id, audit)
+
+    # REQ-005: Auto-save to Hub as draft immediately after fraud check passes
+    try:
+        await hub_store.save(offer)
+    except OfferAlreadyExistsError:
+        # AC-020: idempotent — if already saved, proceed without error
+        logger.debug(f"hub_auto_save_idempotent: offer {offer.offer_id} already in Hub")
+    except RedisUnavailableError as e:
+        logger.error(f"hub_auto_save_redis_unavailable: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Hub store unavailable — offer not saved",
+        )
 
     return offer
 
@@ -192,10 +213,14 @@ async def approve_offer(
     offer_id: str,
     offer: OfferBrief,
     user: AuthUser = Depends(require_marketing_role),
-    hub: HubApiClient = Depends(get_hub_client),
+    hub_store: HubStore = Depends(get_hub_store),
     fraud: FraudCheckService = Depends(get_fraud_service),
     audit: AuditLogService = Depends(get_audit_service),
 ) -> ApproveOfferResponse:
+    """F-001 FIX: Use hub_store.update() instead of hub_client.save_offer() to avoid 409 conflict.
+
+    POST /generate auto-saves as draft. POST /approve transitions draft → approved via update().
+    """
     if offer.offer_id != offer_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -208,14 +233,34 @@ async def approve_offer(
             detail="Cannot approve offer with critical risk flags",
         )
 
+    # F-001 FIX: verify draft exists in Hub before updating
+    try:
+        current = await hub_store.get(offer_id)
+    except RedisUnavailableError as e:
+        logger.error(f"hub_redis_unavailable: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Hub store unavailable",
+        )
+
+    if current is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Offer {offer_id} not found in Hub — generate it first",
+        )
+
+    # Reuse hub.py transition validator — keeps validation logic in one place
+    _validate_transition(current.status, OfferStatus.approved)
+
     approved_offer = offer.model_copy(update={"status": OfferStatus.approved})
 
     try:
-        await hub.save_offer(approved_offer)
-    except HubSaveError as e:
+        await hub_store.update(approved_offer)
+    except RedisUnavailableError as e:
+        logger.error(f"hub_redis_unavailable: {e}")
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Hub save failed: {e}",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Hub store unavailable",
         )
 
     # Update active offer stacking count for fraud detection
