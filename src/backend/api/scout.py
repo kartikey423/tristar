@@ -16,15 +16,20 @@ from src.backend.api.deps import (
     get_delivery_constraint_service,
     get_notification_service,
     get_purchase_event_handler,
+    get_scout_audit_service,
+    get_scout_match_service,
 )
 from src.backend.core.config import settings
 from src.backend.models.offer_brief import OfferBrief
 from src.backend.models.purchase_event import PurchaseContextRequest, PurchaseEventPayload
+from src.backend.models.scout_match import MatchRequest, MatchResponse, NoMatchResponse
 from src.backend.services.audit_log_service import AuditLogService
 from src.backend.services.context_scoring_service import ContextScoringService
 from src.backend.services.delivery_constraint_service import DeliveryConstraintService
 from src.backend.services.notification_service import NotificationService
 from src.backend.services.purchase_event_handler import PurchaseEventHandler
+from src.backend.services.scout_audit_service import ScoutAuditService
+from src.backend.services.scout_match_service import ScoutMatchService
 from src.backend.services.scout_service_auth import scout_auth
 
 router = APIRouter()
@@ -182,7 +187,8 @@ async def process_purchase_event(
             }
         else:
             logger.warning(
-                f"Designer API returned {response.status_code} for purchase-triggered offer"
+                "Designer API returned non-201 for purchase-triggered offer",
+                extra={"status_code": response.status_code},
             )
             return {
                 "status": "accepted",
@@ -197,3 +203,61 @@ async def process_purchase_event(
             "action": "error",
             "offer_generated": False,
         }
+
+
+@router.post(
+    "/match",
+    response_model=None,  # Union[MatchResponse, NoMatchResponse] — FastAPI infers from return
+    summary="Match active Hub offers to a member purchase context",
+    description=(
+        "Scores Claude-approved Hub offers against real-time context signals "
+        "(location, time, weather, behavioral profile). "
+        "Returns the best match if score > 60, or a no-match response. "
+        "Enforces CASL opt-out, 6h rate limit, 24h dedup, and quiet-hours (F-004)."
+    ),
+    responses={
+        200: {"description": "Match result — activated, queued, rate_limited, or no match"},
+        400: {"description": "Missing purchase_location or SCOUT_MATCH_ENABLED=false"},
+        503: {"description": "Feature disabled via SCOUT_MATCH_ENABLED flag"},
+    },
+)
+async def scout_match(
+    request: MatchRequest,
+    match_service: ScoutMatchService = Depends(get_scout_match_service),
+) -> MatchResponse | NoMatchResponse:
+    """POST /api/scout/match — Hub-offer activation engine.
+
+    Design review F-004 fix: purchase_location is Optional in MatchRequest (avoids
+    Pydantic 422); route validates presence and returns HTTP 400 if absent (AC-007).
+    """
+    if not settings.SCOUT_MATCH_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Scout match endpoint is disabled (SCOUT_MATCH_ENABLED=false)",
+        )
+
+    # F-004: route-level validation — 400 (not 422) when purchase_location absent
+    if request.purchase_location is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="purchase_location is required for Scout match activation",
+        )
+
+    result = await match_service.match(request)
+    return result
+
+
+@router.get(
+    "/activation-log/{member_id}",
+    summary="Return recent Scout activation records for a member",
+    responses={
+        200: {"description": "List of activation records (newest first)"},
+    },
+)
+async def get_activation_log(
+    member_id: str,
+    limit: int = 20,
+    scout_audit: ScoutAuditService = Depends(get_scout_audit_service),
+) -> list[dict]:
+    """GET /api/scout/activation-log/{member_id} — used by ContextDashboard (AC-021)."""
+    return await scout_audit.get_recent(member_id, limit=limit)

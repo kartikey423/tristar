@@ -97,6 +97,39 @@ class HubApiClient:
         except httpx.RequestError as e:
             raise HubSaveError(f"Hub API unreachable: {e}") from e
 
+    async def get_active_offers(self) -> list[OfferBrief]:
+        """GET all active offers from Hub — used by Scout match engine.
+
+        Calls GET /api/hub/offers?status=active. Returns empty list on any error
+        so Scout degrades gracefully if Hub is unreachable (REQ-004).
+        """
+        try:
+            response = await self._client.get(
+                f"{self._base_url}/offers",
+                params={"status": "active"},
+                headers=scout_auth.bearer_header(),
+            )
+            response.raise_for_status()
+            data = response.json()
+            offers = [OfferBrief(**o) for o in data.get("offers", [])]
+            logger.info(
+                "Active offers fetched from Hub",
+                extra={"count": len(offers)},
+            )
+            return offers
+        except httpx.HTTPStatusError as e:
+            logger.warning(
+                "hub_api:get_active_offers failed",
+                extra={"status_code": e.response.status_code},
+            )
+            return []
+        except httpx.RequestError as e:
+            logger.warning(
+                "hub_api:get_active_offers unreachable",
+                extra={"error": str(e)},
+            )
+            return []
+
     async def get_recent_member_offers(
         self,
         member_id: str,

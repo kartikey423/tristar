@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     DEDUP_WINDOW_HOURS: int = 24
     HIGH_VALUE_PURCHASE_THRESHOLD: float = 100.0  # bypass 24h dedup if amount > $100
 
+    # ── Scout match endpoint feature flag (new Hub-matching flow) ───────────────
+    SCOUT_MATCH_ENABLED: bool = True
+    # Max active Hub offers to score per match request (F-005 design review fix)
+    SCOUT_CANDIDATE_CAP: int = 5
+
     # ── F-009: Feature flag + pilot rollout ─────────────────────────────────────
     PURCHASE_TRIGGER_ENABLED: bool = False
     # Comma-separated member IDs allowed in pilot; empty = all members (when enabled)
