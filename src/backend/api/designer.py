@@ -17,6 +17,7 @@ from src.backend.api.deps import (
     get_hub_store,
     get_inventory_service,
 )
+from src.backend.api.hub import _validate_transition
 from src.backend.core.security import AuthUser, require_marketing_role, require_system_role
 from src.backend.models.offer_brief import (
     ApproveOfferResponse,
@@ -236,6 +237,7 @@ async def approve_offer(
     try:
         current = await hub_store.get(offer_id)
     except RedisUnavailableError as e:
+        logger.error(f"hub_redis_unavailable: {e}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Hub store unavailable",
@@ -247,22 +249,15 @@ async def approve_offer(
             detail=f"Offer {offer_id} not found in Hub — generate it first",
         )
 
-    if current.status != OfferStatus.draft:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "error": "InvalidTransition",
-                "old_status": current.status.value,
-                "new_status": OfferStatus.approved.value,
-                "allowed": [OfferStatus.draft.value],
-            },
-        )
+    # Reuse hub.py transition validator — keeps validation logic in one place
+    _validate_transition(current.status, OfferStatus.approved)
 
     approved_offer = offer.model_copy(update={"status": OfferStatus.approved})
 
     try:
         await hub_store.update(approved_offer)
     except RedisUnavailableError as e:
+        logger.error(f"hub_redis_unavailable: {e}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Hub store unavailable",

@@ -175,17 +175,14 @@ async def list_offers(
     status_filter: Optional[OfferStatus] = Query(default=None, alias="status"),
     member_id: Optional[str] = Query(default=None),
     trigger_type: Optional[TriggerType] = Query(default=None),
-    since: Optional[str] = Query(default=None),
+    since: Optional[datetime] = Query(default=None),
     _user: AuthUser = Depends(get_current_user),
     hub_store: HubStore = Depends(get_hub_store),
 ) -> ListOffersResponse:
     t0 = time.monotonic()
     try:
-        since_dt: Optional[datetime] = None
-        if since:
-            since_dt = datetime.fromisoformat(since)
-            if since_dt.tzinfo is None:
-                since_dt = since_dt.replace(tzinfo=timezone.utc)
+        # Normalize timezone — FastAPI may deliver a naive datetime if no offset in query string
+        since_dt = since.replace(tzinfo=timezone.utc) if since and since.tzinfo is None else since
 
         try:
             offers = await hub_store.list(
