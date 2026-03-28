@@ -1,0 +1,104 @@
+{
+  "valid_marketer_offer": {
+    "offer_id": "550e8400-e29b-41d4-a716-446655440000",
+    "objective": "Reactivate lapsed high-value members with winter sports gear offer",
+    "segment": {
+      "name": "lapsed_high_value",
+      "definition": "Members with >$500 lifetime spend who have not transacted in the last 90 days",
+      "estimated_size": 12500,
+      "criteria": ["high_value", "lapsed_90_days"]
+    },
+    "construct": {
+      "type": "points_multiplier",
+      "value": 3,
+      "description": "3× points on all Sport Chek purchases over $75"
+    },
+    "channels": [
+      {"channel_type": "push", "priority": 1},
+      {"channel_type": "email", "priority": 2}
+    ],
+    "kpis": {
+      "expected_redemption_rate": 0.15,
+      "expected_uplift_pct": 25.0,
+      "target_segment_size": 12500
+    },
+    "risk_flags": {
+      "over_discounting": false,
+      "cannibalization": false,
+      "frequency_abuse": false,
+      "offer_stacking": false,
+      "severity": "low",
+      "warnings": []
+    },
+    "status": "draft",
+    "trigger_type": "marketer_initiated",
+    "created_at": "2026-03-27T10:00:00Z"
+  },
+  "critical_fraud_offer": {
+    "offer_id": "660e8400-e29b-41d4-a716-446655440001",
+    "objective": "Massive 40% discount to clear all remaining winter inventory now",
+    "segment": {
+      "name": "all_members",
+      "definition": "All active Triangle members",
+      "estimated_size": 50000,
+      "criteria": ["active"]
+    },
+    "construct": {
+      "type": "discount",
+      "value": 40,
+      "description": "40% off all winter clearance items"
+    },
+    "channels": [
+      {"channel_type": "push", "priority": 1}
+    ],
+    "kpis": {
+      "expected_redemption_rate": 0.35,
+      "expected_uplift_pct": 60.0
+    },
+    "risk_flags": {
+      "over_discounting": true,
+      "cannibalization": false,
+      "frequency_abuse": false,
+      "offer_stacking": false,
+      "severity": "critical",
+      "warnings": ["Discount of 40.0% exceeds 30% threshold"]
+    },
+    "status": "draft",
+    "trigger_type": "marketer_initiated",
+    "created_at": "2026-03-27T10:00:00Z"
+  },
+  "purchase_triggered_offer": {
+    "offer_id": "770e8400-e29b-41d4-a716-446655440002",
+    "objective": "Personalized offer for recent Tim Hortons purchaser near Sport Chek",
+    "segment": {
+      "name": "active_purchaser",
+      "definition": "Member who just made a purchase at a partner store near a CTC location",
+      "estimated_size": 1,
+      "criteria": ["recent_purchase", "proximity_ctc"]
+    },
+    "construct": {
+      "type": "bonus_points",
+      "value": 500,
+      "description": "500 bonus Triangle points on next CTC purchase within 4 hours"
+    },
+    "channels": [
+      {"channel_type": "push", "priority": 1}
+    ],
+    "kpis": {
+      "expected_redemption_rate": 0.22,
+      "expected_uplift_pct": 35.0
+    },
+    "risk_flags": {
+      "over_discounting": false,
+      "cannibalization": false,
+      "frequency_abuse": false,
+      "offer_stacking": false,
+      "severity": "low",
+      "warnings": []
+    },
+    "status": "active",
+    "trigger_type": "purchase_triggered",
+    "created_at": "2026-03-27T14:00:00Z",
+    "valid_until": "2026-03-27T18:00:00Z"
+  }
+}
