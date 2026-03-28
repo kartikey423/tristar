@@ -50,6 +50,24 @@ class HubStore(Protocol):
         ...
 
 
+def _apply_filters(
+    offers: list[OfferBrief],
+    status_filter: Optional[OfferStatus],
+    trigger_type: Optional[TriggerType],
+    since: Optional[datetime],
+) -> list[OfferBrief]:
+    """Apply optional list filters in-memory. Shared by both store implementations."""
+    if status_filter:
+        offers = [o for o in offers if o.status == status_filter]
+    if trigger_type:
+        offers = [o for o in offers if o.trigger_type == trigger_type]
+    if since:
+        if since.tzinfo is None:
+            since = since.replace(tzinfo=timezone.utc)
+        offers = [o for o in offers if o.created_at >= since]
+    return offers
+
+
 class InMemoryHubStore:
     """In-memory implementation for development and testing.
 
@@ -80,20 +98,7 @@ class InMemoryHubStore:
         trigger_type: Optional[TriggerType] = None,
         since: Optional[datetime] = None,
     ) -> list[OfferBrief]:
-        offers = list(self._store.values())
-
-        if status_filter:
-            offers = [o for o in offers if o.status == status_filter]
-
-        if trigger_type:
-            offers = [o for o in offers if o.trigger_type == trigger_type]
-
-        if since:
-            if since.tzinfo is None:
-                since = since.replace(tzinfo=timezone.utc)
-            offers = [o for o in offers if o.created_at >= since]
-
-        return offers
+        return _apply_filters(list(self._store.values()), status_filter, trigger_type, since)
 
     async def exists(self, offer_id: str) -> bool:
         return offer_id in self._store
@@ -130,11 +135,10 @@ class RedisHubStore:
 
     async def save(self, offer: OfferBrief) -> None:
         try:
-            key = self._key(offer.offer_id)
-            exists = await self._redis.exists(key)
-            if exists:
+            # SET NX is atomic: succeeds only if key does not exist (eliminates EXISTS+SET race)
+            inserted = await self._redis.set(self._key(offer.offer_id), offer.model_dump_json(), nx=True)
+            if inserted is None:
                 raise OfferAlreadyExistsError(f"Offer {offer.offer_id} already exists in Hub")
-            await self._redis.set(key, offer.model_dump_json())
         except OfferAlreadyExistsError:
             raise
         except Exception as e:
@@ -153,7 +157,11 @@ class RedisHubStore:
         since: Optional[datetime] = None,
     ) -> list[OfferBrief]:
         try:
-            keys = await self._redis.keys("offer:*")
+            # Use SCAN (non-blocking cursor) instead of KEYS (blocks entire Redis keyspace)
+            keys: list[str] = []
+            async for key in self._redis.scan_iter("offer:*"):
+                keys.append(key)
+
             if not keys:
                 return []
 
@@ -166,16 +174,7 @@ class RedisHubStore:
                     except Exception as parse_err:
                         logger.warning(f"hub_redis_parse_error: {parse_err}")
 
-            if status_filter:
-                offers = [o for o in offers if o.status == status_filter]
-            if trigger_type:
-                offers = [o for o in offers if o.trigger_type == trigger_type]
-            if since:
-                if since.tzinfo is None:
-                    since = since.replace(tzinfo=timezone.utc)
-                offers = [o for o in offers if o.created_at >= since]
-
-            return offers
+            return _apply_filters(offers, status_filter, trigger_type, since)
         except RedisUnavailableError:
             raise
         except Exception as e:

@@ -21,53 +21,44 @@ export interface ListOffersResponse {
   count: number;
 }
 
+/** Shared server-side fetch helper — applies auth headers and disables caching. */
+async function hubServerFetch(url: string, tag: string): Promise<Response> {
+  return fetch(url, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    next: { revalidate: 0 }, // Always fresh — no caching for Hub state
+  }).then((res) => {
+    if (!res.ok) throw new Error(`Hub ${tag} failed: ${res.status} ${res.statusText}`);
+    return res;
+  });
+}
+
 /**
  * Fetch all offers from Hub with optional filters.
  * Called from Server Components — uses NODE_ENV auth via MARKETER_JWT.
  */
 export async function fetchOffers(params: FetchOffersParams = {}): Promise<ListOffersResponse> {
   const url = new URL(`${SERVER_API_BASE}/api/hub/offers`);
-
   if (params.status) url.searchParams.set('status', params.status);
   if (params.trigger_type) url.searchParams.set('trigger_type', params.trigger_type);
   if (params.since) url.searchParams.set('since', params.since);
 
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeaders(),
-    },
-    next: { revalidate: 0 }, // Always fresh — no caching for Hub state
-  });
-
-  if (!response.ok) {
-    throw new Error(`Hub fetchOffers failed: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json() as Promise<ListOffersResponse>;
+  const res = await hubServerFetch(url.toString(), 'fetchOffers');
+  return res.json() as Promise<ListOffersResponse>;
 }
 
 /**
  * Fetch a single offer by ID from Hub.
  */
 export async function fetchOffer(offerId: string): Promise<OfferBrief> {
-  const response = await fetch(`${SERVER_API_BASE}/api/hub/offers/${offerId}`, {
+  const url = `${SERVER_API_BASE}/api/hub/offers/${offerId}`;
+  // 404 needs a distinct error message — check before delegating to hubServerFetch
+  const res = await fetch(url, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeaders(),
-    },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     next: { revalidate: 0 },
   });
-
-  if (response.status === 404) {
-    throw new Error(`Offer ${offerId} not found`);
-  }
-
-  if (!response.ok) {
-    throw new Error(`Hub fetchOffer failed: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json() as Promise<OfferBrief>;
+  if (res.status === 404) throw new Error(`Offer ${offerId} not found`);
+  if (!res.ok) throw new Error(`Hub fetchOffer failed: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<OfferBrief>;
 }

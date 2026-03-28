@@ -4,6 +4,7 @@
  * Handles Hub 503 gracefully with an inline error message.
  */
 
+import { OFFER_STATUSES } from '@/../../shared/types/offer-brief';
 import type { OfferStatus } from '@/../../shared/types/offer-brief';
 import { OfferList } from '../../components/Hub/OfferList';
 import { fetchOffers } from '../../services/hub-api';
@@ -51,10 +52,7 @@ export default async function HubPage({ searchParams }: HubPageProps) {
 function StatusFilterNav({ currentStatus }: { currentStatus?: OfferStatus }) {
   const filters: Array<{ label: string; value: OfferStatus | undefined }> = [
     { label: 'All', value: undefined },
-    { label: 'Draft', value: 'draft' },
-    { label: 'Approved', value: 'approved' },
-    { label: 'Active', value: 'active' },
-    { label: 'Expired', value: 'expired' },
+    ...OFFER_STATUSES.map((s) => ({ label: s.charAt(0).toUpperCase() + s.slice(1), value: s })),
   ];
 
   return (

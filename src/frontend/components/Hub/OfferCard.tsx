@@ -6,7 +6,9 @@
  * F-005 FIX: Import from @/../../shared/types/offer-brief (correct relative path).
  */
 
-import type { OfferBrief } from '@/../../shared/types/offer-brief';
+import type { OfferBrief, OfferStatus } from '@/../../shared/types/offer-brief';
+
+const DRAFT_STATUS: OfferStatus = 'draft';
 import { StatusBadge } from './StatusBadge';
 import { ApproveButton } from './ApproveButton';
 
@@ -52,7 +54,7 @@ export function OfferCard({ offer }: OfferCardProps) {
         </span>
       </div>
 
-      {offer.status === 'draft' && (
+      {offer.status === DRAFT_STATUS && (
         <div className="mt-3 border-t border-gray-100 pt-3">
           <ApproveButton offerId={offer.offer_id} />
         </div>

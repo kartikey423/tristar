@@ -58,8 +58,8 @@ class HubAuditService:
     """
 
     def __init__(self, database_url: str) -> None:
-        # Resolve DB file path from SQLAlchemy URL (supports sqlite+aiosqlite:/// prefix)
-        self._db_path = database_url.replace("sqlite+aiosqlite:///", "")
+        # Resolve DB file path from SQLAlchemy-style URL (e.g. sqlite+aiosqlite:///path or sqlite:///path)
+        self._db_path = database_url.split("///", 1)[-1]
         # F-004 FIX: create table synchronously so it exists before first async write
         self._create_table_sync()
 
