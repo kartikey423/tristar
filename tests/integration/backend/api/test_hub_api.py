@@ -4,12 +4,12 @@ import json
 import uuid
 from copy import deepcopy
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from src.backend.api.hub import _store
+from src.backend.api.deps import get_hub_store
 from src.backend.main import app
 
 FIXTURES = json.loads(
@@ -20,9 +20,9 @@ FIXTURES = json.loads(
 @pytest.fixture(autouse=True)
 def clear_hub_store():
     """Wipe in-memory Hub store before and after each test."""
-    _store.clear()
+    get_hub_store().clear()
     yield
-    _store.clear()
+    get_hub_store().clear()
 
 
 @pytest.fixture
@@ -290,3 +290,64 @@ class TestUpdateStatus:
             )
 
         assert response.status_code == 403
+
+    async def test_invalid_transition_returns_422(self, client, system_token_patch):
+        """AC-010: draft → active is an invalid transition — must return 422."""
+        offer = marketer_offer()
+        with system_token_patch:
+            await client.post("/api/hub/offers", json=offer, headers=SYSTEM_HEADERS)
+            response = await client.put(
+                f"/api/hub/offers/{offer['offer_id']}/status",
+                params={"new_status": "active"},
+                headers=SYSTEM_HEADERS,
+            )
+
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert detail["error"] == "InvalidTransition"
+        assert detail["old_status"] == "draft"
+        assert detail["new_status"] == "active"
+
+
+@pytest.mark.integration
+class TestRedisUnavailable:
+    async def test_redis_unavailable_save_returns_503(self, client, system_token_patch):
+        """AC-005: When store raises RedisUnavailableError, save must return 503."""
+        from src.backend.services.hub_store import RedisUnavailableError
+        from src.backend.api.deps import get_hub_store
+        from src.backend.main import app
+
+        mock_store = AsyncMock()
+        mock_store.save.side_effect = RedisUnavailableError("connection refused")
+
+        offer = marketer_offer()
+        app.dependency_overrides[get_hub_store] = lambda: mock_store
+        try:
+            with system_token_patch:
+                response = await client.post(
+                    "/api/hub/offers", json=offer, headers=SYSTEM_HEADERS
+                )
+        finally:
+            app.dependency_overrides.pop(get_hub_store, None)
+
+        assert response.status_code == 503
+
+    async def test_redis_unavailable_get_returns_503(self, client, marketing_token_patch):
+        """AC-006: When store raises RedisUnavailableError, get must return 503."""
+        from src.backend.services.hub_store import RedisUnavailableError
+        from src.backend.api.deps import get_hub_store
+        from src.backend.main import app
+
+        mock_store = AsyncMock()
+        mock_store.get.side_effect = RedisUnavailableError("connection refused")
+
+        app.dependency_overrides[get_hub_store] = lambda: mock_store
+        try:
+            with marketing_token_patch:
+                response = await client.get(
+                    "/api/hub/offers/some-offer-id", headers=MARKETING_HEADERS
+                )
+        finally:
+            app.dependency_overrides.pop(get_hub_store, None)
+
+        assert response.status_code == 503
