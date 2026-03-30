@@ -65,7 +65,7 @@ app = modal.App("tristar-api")
         )
     ],
     timeout=900,  # 15 min max for long-running offer generation
-    container_idle_timeout=300,  # 5 min idle before cold start
+    scaledown_window=300,  # 5 min idle before cold start (renamed from container_idle_timeout)
     cpu=2.0,  # 2 vCPUs for concurrent requests
     memory=2048,  # 2GB RAM
 )
