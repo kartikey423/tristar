@@ -18,6 +18,13 @@ Cost Optimization:
 - Verify: Track cache hit rate (target >80%)
 """
 
+import sys
+import os
+
+# Ensure /root is in Python path so 'from src.backend.main' resolves in Modal container
+if "/root" not in sys.path:
+    sys.path.insert(0, "/root")
+
 import modal
 
 # Modal image with Python 3.11 + all TriStar dependencies
@@ -82,14 +89,8 @@ def fastapi_app():
     Architecture:
     - src/ mounted at /root/src (Python imports work via sys.path)
     - data/ mounted at /root/data (inventory.csv, tristar.db)
-    - Python path includes /root for `from src.backend.main import app`
+    - Python path set at module level so imports resolve before function call
     """
-    import sys
-
-    # Add /root to Python path so 'from src.backend.main' resolves correctly
-    if "/root" not in sys.path:
-        sys.path.insert(0, "/root")
-
     from src.backend.main import app as tristar_app
 
     return tristar_app
