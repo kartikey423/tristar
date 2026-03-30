@@ -18,10 +18,10 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.backend.api.deps import get_hub_audit_service, get_hub_store
-from src.backend.core.security import AuthUser, get_current_user, require_system_role
+from src.backend.core.security import AuthUser, get_current_user, require_marketing_or_system_role, require_system_role
 from src.backend.models.offer_brief import OfferBrief, OfferStatus, TriggerType
 from src.backend.services.hub_audit_service import HubAuditEvent, HubAuditService
 from src.backend.services.hub_store import HubStore, OfferAlreadyExistsError, RedisUnavailableError
@@ -46,7 +46,7 @@ class ListOffersResponse(BaseModel):
 
 VALID_TRANSITIONS: dict[OfferStatus, set[OfferStatus]] = {
     OfferStatus.draft: {OfferStatus.approved},
-    OfferStatus.approved: {OfferStatus.active},
+    OfferStatus.approved: {OfferStatus.active, OfferStatus.expired},  # Allow early close
     OfferStatus.active: {OfferStatus.expired},
     OfferStatus.expired: set(),  # terminal state
 }
@@ -74,7 +74,7 @@ def _validate_transition(old: OfferStatus, new: OfferStatus) -> None:
 )
 async def save_offer(
     offer: OfferBrief,
-    _user: AuthUser = Depends(require_system_role),
+    _user: AuthUser = Depends(require_marketing_or_system_role),
     hub_store: HubStore = Depends(get_hub_store),
     hub_audit: HubAuditService = Depends(get_hub_audit_service),
 ) -> OfferBrief:
@@ -229,7 +229,7 @@ async def list_offers(
 async def update_offer_status(
     offer_id: str,
     new_status: OfferStatus,
-    _user: AuthUser = Depends(require_system_role),
+    _user: AuthUser = Depends(require_marketing_or_system_role),
     hub_store: HubStore = Depends(get_hub_store),
     hub_audit: HubAuditService = Depends(get_hub_audit_service),
 ) -> OfferBrief:
@@ -285,3 +285,82 @@ async def update_offer_status(
                 "hub_latency_exceeded",
                 extra={"endpoint": "update_offer_status", "elapsed_ms": round(elapsed_ms, 1)},
             )
+
+
+class UpdateConstructRequest(BaseModel):
+    value: float = Field(..., ge=0, le=10000, description="New construct value (e.g. discount %, points multiplier)")
+
+
+@router.patch(
+    "/offers/{offer_id}/construct",
+    response_model=OfferBrief,
+    summary="Update offer construct value",
+    description="Allows a marketer to manually override the AI-generated construct value (e.g. discount %, points multiplier) before approval.",
+)
+async def update_construct_value(
+    offer_id: str,
+    body: UpdateConstructRequest,
+    _user: AuthUser = Depends(require_marketing_or_system_role),
+    hub_store: HubStore = Depends(get_hub_store),
+    hub_audit: HubAuditService = Depends(get_hub_audit_service),
+) -> OfferBrief:
+    offer = await hub_store.get(offer_id)
+    if offer is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Offer {offer_id} not found")
+
+    if offer.status not in (OfferStatus.draft,):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Construct value can only be updated on draft offers",
+        )
+
+    new_construct = offer.construct.model_copy(update={"value": body.value})
+    updated = offer.model_copy(update={"construct": new_construct})
+    await hub_store.update(updated)
+
+    _fire_audit(
+        hub_audit.log_event(
+            HubAuditEvent(
+                offer_id=offer_id,
+                event="construct_updated",
+                actor_id=_user.user_id,
+            )
+        )
+    )
+    return updated
+
+
+@router.delete(
+    "/offers/{offer_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Reject (delete) a draft offer",
+    description="Permanently removes a draft offer from the Hub. Only draft offers can be rejected.",
+)
+async def reject_offer(
+    offer_id: str,
+    _user: AuthUser = Depends(require_marketing_or_system_role),
+    hub_store: HubStore = Depends(get_hub_store),
+    hub_audit: HubAuditService = Depends(get_hub_audit_service),
+) -> None:
+    offer = await hub_store.get(offer_id)
+    if offer is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Offer {offer_id} not found")
+
+    if offer.status not in (OfferStatus.draft,):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Only draft offers can be rejected. Current status: {offer.status.value}",
+        )
+
+    await hub_store.delete(offer_id)
+
+    _fire_audit(
+        hub_audit.log_event(
+            HubAuditEvent(
+                offer_id=offer_id,
+                event="offer_rejected",
+                old_status=offer.status,
+                actor_id=_user.user_id,
+            )
+        )
+    )

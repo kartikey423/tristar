@@ -12,9 +12,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # ── External APIs ──────────────────────────────────────────────────────────
     CLAUDE_API_KEY: str = ""
-    CLAUDE_MODEL: str = "claude-sonnet-4-6"
+    CLAUDE_MODEL: str = "claude-sonnet-4-6"  # Legacy: use CLAUDE_MODEL_DEFAULT instead
     WEATHER_API_KEY: str = ""
     NOTIFICATION_PROVIDER_URL: str = "http://localhost:9000/notify"
+
+    # ── Modal Deployment & Intelligence ────────────────────────────────────────
+    MODAL_ENABLED: bool = False
+    MODAL_TOKEN_ID: str = ""
+    MODAL_TOKEN_SECRET: str = ""
+    CLAUDE_MODEL_DEFAULT: str = "claude-3-5-sonnet-20241022"  # $3/$15 per Mtok
+    CLAUDE_MODEL_HAIKU: str = "claude-3-5-haiku-20241022"  # $0.25/$1.25 per Mtok
+    USE_PROMPT_CACHING: bool = True  # 90% cost reduction on cached tokens
 
     # ── Hub API ────────────────────────────────────────────────────────────────
     HUB_API_URL: str = "http://localhost:8000/api/hub"
@@ -50,14 +58,14 @@ class Settings(BaseSettings):
 
     # ── Purchase-trigger thresholds ────────────────────────────────────────────
     PURCHASE_TRIGGER_SCORE_THRESHOLD: float = 70.0
-    PURCHASE_TRIGGER_RATE_LIMIT_HOURS: int = 6
+    PURCHASE_TRIGGER_RATE_LIMIT_HOURS: float = 6.0
     OFFER_VALID_UNTIL_HOURS: int = 4  # purchase-triggered offers expire after 4h
     OFFER_EXPIRY_SWEEP_SECONDS: int = 300  # F-004: background sweep every 5 min
 
     # ── Delivery constraints ────────────────────────────────────────────────────
     QUIET_HOURS_START: int = 22  # 10pm
     QUIET_HOURS_END: int = 8  # 8am
-    DEDUP_WINDOW_HOURS: int = 24
+    DEDUP_WINDOW_HOURS: float = 24.0
     HIGH_VALUE_PURCHASE_THRESHOLD: float = 100.0  # bypass 24h dedup if amount > $100
 
     # ── Scout match endpoint feature flag (new Hub-matching flow) ───────────────

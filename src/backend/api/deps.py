@@ -19,6 +19,7 @@ from src.backend.services.hub_api_client import HubApiClient
 from src.backend.services.hub_audit_service import HubAuditService
 from src.backend.services.hub_store import HubStore, InMemoryHubStore, RedisHubStore
 from src.backend.services.inventory_service import InventoryService
+from src.backend.services.deal_scraper_service import DealScraperService
 from src.backend.services.mock_member_profile_store import MockMemberProfileStore
 from src.backend.services.notification_service import NotificationService
 from src.backend.services.purchase_event_handler import PurchaseEventHandler
@@ -46,6 +47,11 @@ def get_hub_client() -> HubApiClient:
 @lru_cache(maxsize=1)
 def get_inventory_service() -> InventoryService:
     return InventoryService()
+
+
+@lru_cache(maxsize=1)
+def get_deal_scraper_service() -> DealScraperService:
+    return DealScraperService()
 
 
 @lru_cache(maxsize=1)

@@ -11,6 +11,7 @@ from loguru import logger
 from src.backend.api.deps import (
     get_audit_service,
     get_claude_service,
+    get_deal_scraper_service,
     get_fraud_service,
     get_hub_audit_service,
     get_hub_client,
@@ -21,6 +22,7 @@ from src.backend.api.hub import _validate_transition
 from src.backend.core.security import AuthUser, require_marketing_role, require_system_role
 from src.backend.models.offer_brief import (
     ApproveOfferResponse,
+    DealSuggestion,
     GenerateOfferRequest,
     InventorySuggestion,
     OfferBrief,
@@ -211,7 +213,6 @@ async def generate_purchase_triggered_offer(
 )
 async def approve_offer(
     offer_id: str,
-    offer: OfferBrief,
     user: AuthUser = Depends(require_marketing_role),
     hub_store: HubStore = Depends(get_hub_store),
     fraud: FraudCheckService = Depends(get_fraud_service),
@@ -220,19 +221,8 @@ async def approve_offer(
     """F-001 FIX: Use hub_store.update() instead of hub_client.save_offer() to avoid 409 conflict.
 
     POST /generate auto-saves as draft. POST /approve transitions draft → approved via update().
+    No request body needed — the authoritative offer lives in hub_store.
     """
-    if offer.offer_id != offer_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"offer_id in path ({offer_id}) does not match offer body ({offer.offer_id})",
-        )
-
-    if offer.risk_flags.severity == RiskSeverity.critical:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot approve offer with critical risk flags",
-        )
-
     # F-001 FIX: verify draft exists in Hub before updating
     try:
         current = await hub_store.get(offer_id)
@@ -249,10 +239,16 @@ async def approve_offer(
             detail=f"Offer {offer_id} not found in Hub — generate it first",
         )
 
+    if current.risk_flags.severity == RiskSeverity.critical:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot approve offer with critical risk flags",
+        )
+
     # Reuse hub.py transition validator — keeps validation logic in one place
     _validate_transition(current.status, OfferStatus.approved)
 
-    approved_offer = offer.model_copy(update={"status": OfferStatus.approved})
+    approved_offer = current.model_copy(update={"status": OfferStatus.approved})
 
     try:
         await hub_store.update(approved_offer)
@@ -291,3 +287,43 @@ async def get_inventory_suggestions(
     inventory: InventoryService = Depends(get_inventory_service),
 ) -> list[InventorySuggestion]:
     return inventory.get_suggestions(limit=min(limit, 10))
+
+
+@router.get(
+    "/live-deals",
+    response_model=list[DealSuggestion],
+    summary="Get live deals from Canadian Tire",
+    description="Scrapes Canadian Tire weekly deals, flyer, and clearance pages for real-time offer ideas",
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "Live deals retrieved successfully"},
+        401: {"description": "Authentication required"},
+        403: {"description": "Role 'marketing' required"},
+        503: {"description": "Unable to fetch deals from Canadian Tire"},
+    },
+)
+async def get_live_deals(
+    limit: int = 5,
+    user: AuthUser = Depends(require_marketing_role),
+    deal_scraper: DealScraperService = Depends(get_deal_scraper_service),
+) -> list[DealSuggestion]:
+    """Fetch live deals from Canadian Tire to sync with Designer offers.
+
+    Intelligence:
+    - Scrapes 3 sources: weekly deals, flyer, clearance
+    - Cached for 15 minutes to avoid rate limiting
+    - Returns top deals sorted by discount percentage
+
+    Rate Limiting:
+    - 1 request per minute (enforced by internal cache)
+    - Fallback to cached data if scraping fails
+    """
+    try:
+        deals = await deal_scraper.fetch_deals()
+        return deals[:min(limit, 10)]  # Cap at 10 deals
+    except Exception as e:
+        logger.error(f"Failed to fetch live deals: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to fetch deals from Canadian Tire. Please try again later.",
+        )

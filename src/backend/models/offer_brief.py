@@ -140,3 +140,18 @@ class InventorySuggestion(BaseModel):
     urgency: str = Field(..., pattern="^(high|medium|low)$")
     suggested_objective: str
     stale: bool = False
+
+
+class DealSuggestion(BaseModel):
+    """Live deal scraped from Canadian Tire for offer creation intelligence."""
+
+    deal_id: str
+    product_name: str
+    category: str
+    discount_pct: float = Field(..., ge=0, le=100)
+    original_price: float = Field(..., ge=0)
+    deal_price: float = Field(..., ge=0)
+    source_url: str
+    source: str = Field(..., pattern="^(weekly_deals|flyer|clearance)$")
+    suggested_objective: str
+    scraped_at: datetime = Field(default_factory=datetime.utcnow)
