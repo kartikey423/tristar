@@ -14,7 +14,7 @@ import asyncio
 import sys
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,7 +24,17 @@ from loguru import logger
 from src.backend.api import designer, hub, scout
 from src.backend.api.deps import get_hub_client, get_hub_store
 from src.backend.core.config import settings
-from src.backend.models.offer_brief import OfferStatus
+from src.backend.models.offer_brief import (
+    Channel,
+    ChannelType,
+    Construct,
+    KPIs,
+    OfferBrief,
+    OfferStatus,
+    RiskFlags,
+    RiskSeverity,
+    Segment,
+)
 from src.backend.services.claude_api import ClaudeApiError, ClaudeResponseParseError
 from src.backend.services.fraud_check_service import FraudBlockedError
 from src.backend.services.hub_api_client import HubSaveError
@@ -41,6 +51,104 @@ def _setup_logging() -> None:
         level=settings.LOG_LEVEL,
         serialize=(settings.ENVIRONMENT != "development"),
     )
+
+
+# ─── Demo offer seeder ────────────────────────────────────────────────────────
+
+_DEMO_OFFERS: list[OfferBrief] = [
+    OfferBrief(
+        offer_id="demo-winter-clearance-001",
+        objective="Drive clearance on winter outdoor gear — snow blowers, shovels and winter apparel before spring arrives",
+        segment=Segment(
+            name="winter_shoppers",
+            definition="Members who purchased outdoor or automotive items in the last 90 days",
+            estimated_size=12000,
+            criteria=["outdoor", "automotive", "lapsed_90_days"],
+        ),
+        construct=Construct(
+            type="points_multiplier",
+            value=15,
+            description="15x Triangle Points on all winter clearance items at Canadian Tire",
+        ),
+        channels=[Channel(channel_type=ChannelType.push, priority=1)],
+        kpis=KPIs(expected_redemption_rate=0.22, expected_uplift_pct=35, target_segment_size=12000),
+        risk_flags=RiskFlags(
+            over_discounting=False,
+            cannibalization=False,
+            frequency_abuse=False,
+            offer_stacking=False,
+            severity=RiskSeverity.low,
+            warnings=[],
+        ),
+        status=OfferStatus.active,
+    ),
+    OfferBrief(
+        offer_id="demo-auto-care-002",
+        objective="Promote spring automotive prep — oil changes, wiper blades and tire accessories for gold and platinum members",
+        segment=Segment(
+            name="auto_enthusiasts",
+            definition="Gold and platinum members with automotive purchase history",
+            estimated_size=8500,
+            criteria=["automotive", "gold", "platinum"],
+        ),
+        construct=Construct(
+            type="cashback",
+            value=20,
+            description="20% cashback in Triangle Points on automotive accessories at Canadian Tire and PartSource",
+        ),
+        channels=[Channel(channel_type=ChannelType.push, priority=1)],
+        kpis=KPIs(expected_redemption_rate=0.30, expected_uplift_pct=40, target_segment_size=8500),
+        risk_flags=RiskFlags(
+            over_discounting=False,
+            cannibalization=False,
+            frequency_abuse=False,
+            offer_stacking=False,
+            severity=RiskSeverity.low,
+            warnings=[],
+        ),
+        status=OfferStatus.active,
+    ),
+    OfferBrief(
+        offer_id="demo-sport-apparel-003",
+        objective="Reactivate lapsed members with Sport Chek apparel — spring activewear and footwear promotion",
+        segment=Segment(
+            name="lapsed_sport_fans",
+            definition="Members who purchased sports or apparel items but have not visited in 60+ days",
+            estimated_size=15000,
+            criteria=["apparel", "sports", "lapsed_60_days"],
+        ),
+        construct=Construct(
+            type="bonus_points",
+            value=500,
+            description="500 bonus Triangle Points when you spend $75+ on activewear or footwear at Sport Chek",
+        ),
+        channels=[Channel(channel_type=ChannelType.push, priority=1)],
+        kpis=KPIs(expected_redemption_rate=0.18, expected_uplift_pct=28, target_segment_size=15000),
+        risk_flags=RiskFlags(
+            over_discounting=False,
+            cannibalization=False,
+            frequency_abuse=False,
+            offer_stacking=False,
+            severity=RiskSeverity.low,
+            warnings=[],
+        ),
+        status=OfferStatus.active,
+    ),
+]
+
+
+async def _seed_demo_offers() -> None:
+    """Seed active demo offers into the Hub so Scout has candidates at startup."""
+    store = get_hub_store()
+    seeded = 0
+    for offer in _DEMO_OFFERS:
+        if not await store.exists(offer.offer_id):
+            await store.save(offer)
+            seeded += 1
+    if seeded:
+        logger.info(f"Demo seeder: {seeded} active offer(s) loaded into Hub")
+    else:
+        logger.info("Demo seeder: all demo offers already present — skipping")
 
 
 # ─── Background offer expiry task ─────────────────────────────────────────────
@@ -110,6 +218,9 @@ async def lifespan(app: FastAPI):
     _setup_logging()
     _validate_production_secrets()
     logger.info(f"TriStar API starting (environment={settings.ENVIRONMENT})")
+
+    # Seed demo offers so Scout has active candidates immediately
+    await _seed_demo_offers()
 
     # Start background expiry task
     expiry_task = asyncio.create_task(_expire_offers_task())
@@ -205,6 +316,35 @@ async def hub_save_error_handler(request: Request, exc: HubSaveError):
 app.include_router(designer.router, prefix="/api/designer", tags=["Designer"])
 app.include_router(scout.router, prefix="/api/scout", tags=["Scout"])
 app.include_router(hub.router, prefix="/api/hub", tags=["Hub"])
+
+
+@app.post("/api/auth/demo-token", tags=["System"])
+async def get_demo_token(role: str = "marketing") -> dict:
+    """Generate a short-lived demo JWT for Swagger UI / E2E testing.
+
+    Returns a token valid for 1 hour with the requested role.
+    Only available for roles: marketing, system, viewer.
+    """
+    import jwt
+
+    allowed_roles = {"marketing", "system", "viewer"}
+    if role not in allowed_roles:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail=f"role must be one of {allowed_roles}")
+
+    payload = {
+        "sub": f"demo-{role}",
+        "role": role,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+    }
+    token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "role": role,
+        "usage": f'Paste into Swagger Authorize as: Bearer {token}',
+    }
 
 
 @app.get("/health", tags=["System"])
