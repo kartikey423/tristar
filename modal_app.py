@@ -18,16 +18,10 @@ Cost Optimization:
 - Verify: Track cache hit rate (target >80%)
 """
 
-import sys
-import os
-
-# Ensure /root is in Python path so 'from src.backend.main' resolves in Modal container
-if "/root" not in sys.path:
-    sys.path.insert(0, "/root")
-
 import modal
 
 # Modal image with Python 3.11 + all TriStar dependencies
+# add_local_dir() copies source into the image at build time (Modal 1.x API)
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
@@ -47,6 +41,8 @@ image = (
         "beautifulsoup4>=4.12.0",
         "lxml>=5.0.0",
     )
+    .add_local_dir("src", remote_path="/root/src")
+    .add_local_dir("data", remote_path="/root/data")
 )
 
 app = modal.App("tristar-api")
@@ -54,10 +50,6 @@ app = modal.App("tristar-api")
 
 @app.function(
     image=image,
-    mounts=[
-        modal.Mount.from_local_dir("src", remote_path="/root/src"),
-        modal.Mount.from_local_dir("data", remote_path="/root/data"),
-    ],
     secrets=[
         modal.Secret.from_dict(
             {
@@ -87,30 +79,29 @@ def fastapi_app():
     """Mount TriStar FastAPI app with Modal infrastructure.
 
     Architecture:
-    - src/ mounted at /root/src (Python imports work via sys.path)
-    - data/ mounted at /root/data (inventory.csv, tristar.db)
-    - Python path set at module level so imports resolve before function call
+    - src/ baked into image at /root/src via add_local_dir() (Modal 1.x API)
+    - data/ baked into image at /root/data via add_local_dir()
+    - /root added to sys.path so 'from src.backend.main' resolves correctly
     """
+    import sys
+
+    if "/root" not in sys.path:
+        sys.path.insert(0, "/root")
+
     from src.backend.main import app as tristar_app
 
     return tristar_app
 
 
-# Health check function for monitoring (removed to fix modal-http routing issue)
-# The @modal.asgi_app() decorator provides all needed HTTP routing.
-# Cron-based health checks can cause "invalid function call" errors when they
-# try to invoke the ASGI app from within the same deployment context.
-
-
 if __name__ == "__main__":
     print("TriStar Modal App")
-    print("─" * 50)
+    print("-" * 50)
     print("Deployment commands:")
     print("  1. Set credentials: modal token set --token-id <ID> --token-secret <SECRET>")
     print("  2. Deploy: modal deploy modal_app.py")
     print("  3. Test: curl https://tristar-api.modal.run/health")
-    print("─" * 50)
+    print("-" * 50)
     print("Cost optimization:")
-    print("  • Haiku: $0.25/$1.25 per Mtok (classification)")
-    print("  • Sonnet: $3/$15 per Mtok (generation)")
-    print("  • Prompt caching: 90% reduction on cached tokens")
+    print("  Haiku: $0.25/$1.25 per Mtok (classification)")
+    print("  Sonnet: $3/$15 per Mtok (generation)")
+    print("  Prompt caching: 90% reduction on cached tokens")
