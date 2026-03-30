@@ -77,23 +77,10 @@ def fastapi_app():
     return tristar_app
 
 
-# Health check function for monitoring
-@app.function(
-    image=image,
-    schedule=modal.Cron("*/5 * * * *"),  # Every 5 minutes
-)
-def health_monitor():
-    """Periodic health check to keep container warm and monitor status."""
-    import httpx
-
-    try:
-        response = httpx.get("https://tristar-api.modal.run/health", timeout=10.0)
-        if response.status_code != 200:
-            print(f"❌ Health check failed: {response.status_code}")
-        else:
-            print(f"✅ Health check passed: {response.json()}")
-    except Exception as e:
-        print(f"❌ Health check error: {e}")
+# Health check function for monitoring (removed to fix modal-http routing issue)
+# The @modal.asgi_app() decorator provides all needed HTTP routing.
+# Cron-based health checks can cause "invalid function call" errors when they
+# try to invoke the ASGI app from within the same deployment context.
 
 
 if __name__ == "__main__":

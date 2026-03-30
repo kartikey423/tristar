@@ -96,8 +96,8 @@ export function ApproveButton({ offer }: ApproveButtonProps) {
     );
   }
 
-  // Approved state
-  if (isAlreadyApproved || optimisticStatus === 'approved') {
+  // Approved state — ONLY show success badge, no actions below
+  if (isAlreadyApproved || optimisticStatus === 'approved' || approveState === 'success') {
     return (
       <div
         className="flex items-center gap-2 rounded-md bg-emerald-50 border-l-2 border-emerald-500 px-4 py-2.5"
@@ -107,11 +107,13 @@ export function ApproveButton({ offer }: ApproveButtonProps) {
         <span className="material-symbols-outlined text-[16px] text-emerald-600" aria-hidden="true">
           check_circle
         </span>
-        <span className="text-sm font-medium text-emerald-700">Saved to Hub</span>
+        <span className="text-sm font-medium text-emerald-700">Success: Offer in Hub</span>
+        <span className="text-xs text-emerald-600 ml-auto">Approved and ready for activation</span>
       </div>
     );
   }
 
+  // Draft state — show actions panel
   return (
     <div className="space-y-3">
       {/* Discount override */}

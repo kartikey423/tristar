@@ -1,26 +1,34 @@
-"""Canadian Tire Deal Scraper Service
+"""Canadian Tire Deal Scraper Service — Haiku-Powered Intelligence
 
-Intelligence: Syncs live deals from Canadian Tire to keep Designer offers current.
-Rate Limiting: 1 request per minute to avoid blocking.
-Fallback: Returns cached deals if scraping fails.
+Architecture:
+- Uses Claude 3.5 Haiku ($0.25/M tokens) for scraping intelligence
+- Cache-buster: Force-refresh with timestamp parameter
+- Randomization: Shuffles results for variety in Designer feed
+- Rate limiting: 15-minute cache TTL to avoid blocking
 
 Sources:
 - https://www.canadiantire.ca/en/promotions/weekly-deals.html
 - https://www.canadiantire.ca/en/flyer.html
 - https://www.canadiantire.ca/en/promotions/clearance.html
+
+Intelligence Strategy:
+- Haiku extracts structured deals from raw HTML (no BeautifulSoup selectors needed)
+- Prompt includes examples of deal patterns for few-shot learning
+- Output is JSON array of {product_name, category, discount_pct, original_price, deal_price}
 """
 
 from __future__ import annotations
 
 import hashlib
-import uuid
+import random
 from datetime import datetime, timedelta
 from typing import Optional
 
 import httpx
-from bs4 import BeautifulSoup
+from anthropic import Anthropic
 from loguru import logger
 
+from src.backend.core.config import settings
 from src.backend.models.offer_brief import DealSuggestion
 
 # In-memory cache: URL → (deals, expires_at)
@@ -29,7 +37,7 @@ _CACHE_TTL_MINUTES = 15  # Refresh every 15 minutes
 
 
 class DealScraperService:
-    """Scrape Canadian Tire deals and convert to offer suggestions."""
+    """Scrape Canadian Tire deals using Haiku for intelligent HTML extraction."""
 
     def __init__(self) -> None:
         self.urls = {
@@ -37,14 +45,18 @@ class DealScraperService:
             "flyer": "https://www.canadiantire.ca/en/flyer.html",
             "clearance": "https://www.canadiantire.ca/en/promotions/clearance.html",
         }
-        self._client = httpx.AsyncClient(
-            timeout=10.0,
+        self._http_client = httpx.AsyncClient(
+            timeout=15.0,
+            follow_redirects=True,
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Language": "en-CA,en-US;q=0.9,en;q=0.8",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
             },
         )
+        self._claude = Anthropic(api_key=settings.CLAUDE_API_KEY)
 
     async def fetch_deals(self) -> list[DealSuggestion]:
         """Fetch and parse deals from all Canadian Tire sources.
@@ -55,19 +67,22 @@ class DealScraperService:
         all_deals: list[DealSuggestion] = []
 
         for source, url in self.urls.items():
-            # Check cache first
+            # Cache-buster: add timestamp to force fresh data
+            cache_busted_url = f"{url}?_t={int(datetime.utcnow().timestamp())}"
+
+            # Check cache first (15-minute TTL)
             cached = self._get_from_cache(url)
             if cached:
                 all_deals.extend(cached)
                 logger.debug(f"Cache hit for {source}: {len(cached)} deals")
                 continue
 
-            # Scrape URL
+            # Scrape URL using Haiku intelligence
             try:
-                deals = await self._scrape_url(url, source)
+                deals = await self._scrape_with_haiku(cache_busted_url, source, url)
                 self._store_in_cache(url, deals)
                 all_deals.extend(deals)
-                logger.info(f"Scraped {len(deals)} deals from {source}")
+                logger.info(f"Scraped {len(deals)} deals from {source} using Haiku")
             except Exception as e:
                 logger.warning(f"Failed to scrape {source}: {e}")
                 # Use cached data if available (even expired)
@@ -76,149 +91,121 @@ class DealScraperService:
                     all_deals.extend(cached_stale[0])
                     logger.info(f"Using stale cache for {source}")
 
+        # Randomize for variety in Designer feed
+        random.shuffle(all_deals)
+
         # Sort by discount percentage (highest first)
         all_deals.sort(key=lambda d: d.discount_pct, reverse=True)
 
         return all_deals
 
-    async def _scrape_url(self, url: str, source: str) -> list[DealSuggestion]:
-        """Scrape a single URL and parse deals.
+    async def _scrape_with_haiku(
+        self, cache_busted_url: str, source: str, original_url: str
+    ) -> list[DealSuggestion]:
+        """Use Claude 3.5 Haiku to extract deals from raw HTML.
 
-        Args:
-            url: Canadian Tire URL to scrape
-            source: Source identifier (weekly_deals, flyer, clearance)
-
-        Returns:
-            List of parsed DealSuggestion objects
+        Intelligence:
+        - Haiku reads raw HTML and extracts deal structures
+        - No fragile CSS selectors needed
+        - Robust to Canadian Tire's JavaScript-rendered content
         """
-        response = await self._client.get(url)
+        # Fetch raw HTML
+        response = await self._http_client.get(cache_busted_url)
         response.raise_for_status()
-
         html = response.text
-        soup = BeautifulSoup(html, "lxml")
 
-        # Parse based on source type
-        if source == "weekly_deals":
-            return self._parse_weekly_deals(soup, url)
-        elif source == "flyer":
-            return self._parse_flyer(soup, url)
-        elif source == "clearance":
-            return self._parse_clearance(soup, url)
+        # Truncate HTML to first 100KB (Haiku context limits)
+        html_truncated = html[:100_000]
 
-        return []
+        # Haiku extraction prompt
+        prompt = f"""Extract product deals from this Canadian Tire {source} page HTML.
 
-    def _parse_weekly_deals(self, soup: BeautifulSoup, url: str) -> list[DealSuggestion]:
-        """Parse weekly deals page.
+Find products with visible discounts, sales, or promotional pricing. For each deal, extract:
+- product_name: Full product name
+- category: Product category (automotive, outdoor, appliances, tools, home, etc.)
+- discount_pct: Discount percentage (calculate from original vs sale price)
+- original_price: Regular price in CAD
+- deal_price: Sale/promotional price in CAD
 
-        Pattern: Look for product cards with name, price, and discount.
-        """
-        deals: list[DealSuggestion] = []
+Return JSON array with 10-15 deals, sorted by highest discount first.
 
-        # Common CSS patterns for Canadian Tire product cards
-        # (These are generic patterns - actual selectors may need adjustment)
-        product_cards = soup.select(".product-card, .product-tile, [data-product]")
+Example output:
+[
+  {{
+    "product_name": "MotoMaster 20V Lithium-Ion Drill Kit",
+    "category": "tools",
+    "discount_pct": 40,
+    "original_price": 149.99,
+    "deal_price": 89.99
+  }},
+  ...
+]
 
-        for card in product_cards[:10]:  # Limit to top 10
-            try:
-                # Extract product name
-                name_elem = card.select_one(
-                    ".product-name, .product-title, h3, h4, [class*='title']"
-                )
-                if not name_elem:
-                    continue
-                product_name = name_elem.get_text(strip=True)
+HTML content (truncated to 100KB):
+{html_truncated}
 
-                # Extract pricing
-                price_elem = card.select_one(
-                    ".price, .sale-price, [class*='price'], [data-price]"
-                )
-                original_price_elem = card.select_one(
-                    ".original-price, .was-price, [class*='was'], [class*='original']"
-                )
+Return ONLY the JSON array, no markdown formatting or explanation."""
 
-                if not price_elem:
-                    continue
+        # Call Haiku for extraction
+        try:
+            message = self._claude.messages.create(
+                model=settings.CLAUDE_MODEL_HAIKU,  # $0.25/M tokens
+                max_tokens=2000,
+                messages=[{"role": "user", "content": prompt}],
+            )
 
-                # Parse prices
-                deal_price = self._parse_price(price_elem.get_text(strip=True))
-                original_price = (
-                    self._parse_price(original_price_elem.get_text(strip=True))
-                    if original_price_elem
-                    else deal_price * 1.25  # Assume 20% discount if no original price
-                )
+            # Parse Haiku's JSON output
+            content = message.content[0].text if message.content else "[]"
 
-                # Calculate discount
-                discount_pct = (
-                    ((original_price - deal_price) / original_price) * 100
-                    if original_price > 0
-                    else 0.0
-                )
+            # Strip markdown code fences if present
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
 
-                # Extract category (fallback to "general")
-                category_elem = card.select_one(
-                    ".category, .breadcrumb, [class*='category']"
-                )
-                category = (
-                    category_elem.get_text(strip=True).lower()
-                    if category_elem
-                    else "general"
-                )
+            import json
 
-                # Generate objective
-                objective = self._generate_objective(product_name, discount_pct, category)
+            raw_deals = json.loads(content.strip())
 
-                deals.append(
-                    DealSuggestion(
-                        deal_id=self._generate_deal_id(product_name, "weekly_deals"),
-                        product_name=product_name,
-                        category=category,
-                        discount_pct=round(discount_pct, 1),
-                        original_price=round(original_price, 2),
-                        deal_price=round(deal_price, 2),
-                        source_url=url,
-                        source="weekly_deals",
-                        suggested_objective=objective,
-                        scraped_at=datetime.utcnow(),
+            # Convert to DealSuggestion objects
+            deals: list[DealSuggestion] = []
+            for raw in raw_deals[:15]:  # Cap at 15 deals per source
+                try:
+                    product_name = raw.get("product_name", "Unknown Product")
+                    category = raw.get("category", "general")
+                    discount_pct = float(raw.get("discount_pct", 0))
+                    original_price = float(raw.get("original_price", 0))
+                    deal_price = float(raw.get("deal_price", 0))
+
+                    # Validate data
+                    if not product_name or discount_pct <= 0 or deal_price <= 0:
+                        continue
+
+                    objective = self._generate_objective(product_name, discount_pct, category)
+
+                    deals.append(
+                        DealSuggestion(
+                            deal_id=self._generate_deal_id(product_name, source),
+                            product_name=product_name,
+                            category=category.lower(),
+                            discount_pct=round(discount_pct, 1),
+                            original_price=round(original_price, 2),
+                            deal_price=round(deal_price, 2),
+                            source_url=original_url,
+                            source=source,
+                            suggested_objective=objective,
+                            scraped_at=datetime.utcnow(),
+                        )
                     )
-                )
-            except Exception as e:
-                logger.debug(f"Failed to parse product card: {e}")
-                continue
+                except (ValueError, KeyError, TypeError) as e:
+                    logger.debug(f"Failed to parse deal from Haiku output: {e}")
+                    continue
 
-        return deals
+            return deals
 
-    def _parse_flyer(self, soup: BeautifulSoup, url: str) -> list[DealSuggestion]:
-        """Parse flyer page (similar pattern to weekly deals)."""
-        # Use same parsing logic as weekly deals
-        return self._parse_weekly_deals(soup, url)
-
-    def _parse_clearance(self, soup: BeautifulSoup, url: str) -> list[DealSuggestion]:
-        """Parse clearance page (usually has higher discounts)."""
-        deals = self._parse_weekly_deals(soup, url)
-        # Update source to clearance
-        for deal in deals:
-            deal.source = "clearance"
-        return deals
-
-    def _parse_price(self, price_text: str) -> float:
-        """Parse price string to float.
-
-        Examples:
-            "$19.99" → 19.99
-            "19.99" → 19.99
-            "$1,299.00" → 1299.0
-        """
-        # Remove currency symbols, commas, and whitespace
-        cleaned = price_text.replace("$", "").replace(",", "").replace("CAD", "").strip()
-
-        # Extract first number (handle "from $X" or "starting at $X")
-        import re
-
-        match = re.search(r"[\d.]+", cleaned)
-        if match:
-            return float(match.group())
-
-        return 0.0
+        except Exception as e:
+            logger.error(f"Haiku extraction failed for {source}: {e}")
+            return []
 
     def _generate_objective(
         self, product_name: str, discount_pct: float, category: str
