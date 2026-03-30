@@ -34,6 +34,7 @@ image = (
         "python-jose[cryptography]>=3.3.0",
         "PyJWT>=2.8.0",
         "loguru>=0.7.2",
+        "python-dotenv>=1.0.0",
         "aiosqlite>=0.21.0",
         "sqlalchemy[asyncio]>=2.0",
         "beautifulsoup4>=4.12.0",
@@ -46,6 +47,10 @@ app = modal.App("tristar-api")
 
 @app.function(
     image=image,
+    mounts=[
+        modal.Mount.from_local_dir("src", remote_path="/root/src"),
+        modal.Mount.from_local_dir("data", remote_path="/root/data"),
+    ],
     secrets=[
         modal.Secret.from_dict(
             {
@@ -59,19 +64,32 @@ app = modal.App("tristar-api")
                 "USE_PROMPT_CACHING": "true",
                 "CLAUDE_MODEL_DEFAULT": "claude-3-5-sonnet-20241022",
                 "CLAUDE_MODEL_HAIKU": "claude-3-5-haiku-20241022",
+                "DATABASE_URL": "sqlite:////root/data/tristar.db",
                 "ENVIRONMENT": "production",
                 "LOG_LEVEL": "INFO",
             }
         )
     ],
     timeout=900,  # 15 min max for long-running offer generation
-    scaledown_window=300,  # 5 min idle before cold start (renamed from container_idle_timeout)
+    scaledown_window=300,  # 5 min idle before cold start
     cpu=2.0,  # 2 vCPUs for concurrent requests
     memory=2048,  # 2GB RAM
 )
 @modal.asgi_app()
 def fastapi_app():
-    """Mount TriStar FastAPI app with Modal infrastructure."""
+    """Mount TriStar FastAPI app with Modal infrastructure.
+
+    Architecture:
+    - src/ mounted at /root/src (Python imports work via sys.path)
+    - data/ mounted at /root/data (inventory.csv, tristar.db)
+    - Python path includes /root for `from src.backend.main import app`
+    """
+    import sys
+
+    # Add /root to Python path so 'from src.backend.main' resolves correctly
+    if "/root" not in sys.path:
+        sys.path.insert(0, "/root")
+
     from src.backend.main import app as tristar_app
 
     return tristar_app
