@@ -54,6 +54,7 @@ app = modal.App("tristar-api")
         modal.Secret.from_dict(
             {
                 "CLAUDE_API_KEY": "REDACTED_ROTATE_THIS_KEY",
+                "SCOUT_WEBHOOK_SECRET": "modal-scout-webhook-secret-2026-tristar",
                 "REDIS_URL": "redis://localhost:6379",
                 "JWT_SECRET": "modal-production-secret-2026",
                 "HUB_API_URL": "https://tristar-api.modal.run/api/hub",
