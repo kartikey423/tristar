@@ -8,7 +8,7 @@ Infrastructure:
 - Max timeout: 15 minutes
 
 Deployment:
-    modal token set --token-id MODAL_TOKEN_ID --token-secret MODAL_TOKEN_SECRET
+    modal token set --token-id <MODAL_TOKEN_ID> --token-secret <MODAL_TOKEN_SECRET>
     modal deploy modal_app.py
 
 Cost Optimization:
@@ -51,24 +51,7 @@ app = modal.App("tristar-api")
 @app.function(
     image=image,
     secrets=[
-        modal.Secret.from_dict(
-            {
-                "CLAUDE_API_KEY": "REDACTED_ROTATE_THIS_KEY",
-                "SCOUT_WEBHOOK_SECRET": "modal-scout-webhook-secret-2026-tristar",
-                "REDIS_URL": "redis://localhost:6379",
-                "JWT_SECRET": "modal-production-secret-2026",
-                "HUB_API_URL": "https://tristar-api.modal.run/api/hub",
-                "DESIGNER_API_URL": "https://tristar-api.modal.run",
-                "NOTIFICATION_PROVIDER_URL": "https://notification-service.modal.run",
-                "MODAL_ENABLED": "true",
-                "USE_PROMPT_CACHING": "true",
-                "CLAUDE_MODEL_DEFAULT": "claude-3-5-sonnet-20241022",
-                "CLAUDE_MODEL_HAIKU": "claude-3-5-haiku-20241022",
-                "DATABASE_URL": "sqlite:////root/data/tristar.db",
-                "ENVIRONMENT": "production",
-                "LOG_LEVEL": "INFO",
-            }
-        )
+        modal.Secret.from_name("tristar-secrets"),
     ],
     timeout=900,  # 15 min max for long-running offer generation
     scaledown_window=300,  # 5 min idle before cold start
