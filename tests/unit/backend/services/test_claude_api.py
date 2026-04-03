@@ -43,10 +43,13 @@ def clear_cache():
     _cache.clear()
 
 
+_FAKE_API_KEY = "sk-ant-test-fake-key-000000000000"  # Fake key so _client is initialized
+
+
 class TestCacheBehavior:
     async def test_cache_miss_calls_claude_api(self):
         """First call with an objective should hit Claude API."""
-        service = ClaudeApiService()
+        service = ClaudeApiService(api_key=_FAKE_API_KEY)
 
         with patch.object(service, "_call_with_retry", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = json.dumps(VALID_OFFER)
@@ -60,7 +63,7 @@ class TestCacheBehavior:
     async def test_cache_hit_returns_fresh_uuid(self):
         """F-001: cache hit must assign a fresh UUID, not return the cached offer_id."""
         objective = "Reactivate lapsed high-value members with winter sports gear offer"
-        service = ClaudeApiService()
+        service = ClaudeApiService(api_key=_FAKE_API_KEY)
 
         with patch.object(service, "_call_with_retry", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = json.dumps(VALID_OFFER)
@@ -78,7 +81,7 @@ class TestCacheBehavior:
         assert offer1.segment.name == offer2.segment.name
 
     async def test_different_objectives_get_separate_cache_entries(self):
-        service = ClaudeApiService()
+        service = ClaudeApiService(api_key=_FAKE_API_KEY)
         call_count = 0
 
         async def mock_call(prompt):
@@ -94,7 +97,7 @@ class TestCacheBehavior:
 
     async def test_cache_is_case_insensitive(self):
         """Cache key is SHA-256 of lowercase objective."""
-        service = ClaudeApiService()
+        service = ClaudeApiService(api_key=_FAKE_API_KEY)
 
         with patch.object(service, "_call_with_retry", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = json.dumps(VALID_OFFER)
@@ -110,7 +113,7 @@ class TestRetryBehavior:
         """API error should trigger 3 attempts total then raise ClaudeApiError."""
         import anthropic
 
-        service = ClaudeApiService()
+        service = ClaudeApiService(api_key=_FAKE_API_KEY)
         call_count = 0
 
         def raise_api_error(*args, **kwargs):
@@ -133,7 +136,7 @@ class TestRetryBehavior:
         """Should succeed if first attempt fails but second succeeds."""
         import anthropic
 
-        service = ClaudeApiService()
+        service = ClaudeApiService(api_key=_FAKE_API_KEY)
         attempts = 0
 
         def flaky_call(*args, **kwargs):

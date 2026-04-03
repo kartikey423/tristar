@@ -89,6 +89,7 @@ class ScoutMatchService:
         candidates: list[OfferBrief] = offers[:_CANDIDATE_CAP]
 
         # Score each candidate and keep the best match.
+        # F-005 early exit: stop after first offer exceeds activation threshold.
         best_offer: OfferBrief | None = None
         best_result: ClaudeScoreResult | None = None
         for offer in candidates:
@@ -105,6 +106,8 @@ class ScoutMatchService:
             if best_result is None or result.score > best_result.score:
                 best_offer = offer
                 best_result = result
+            if result.score > _ACTIVATION_THRESHOLD:
+                break  # Early exit — first qualifying offer wins (reduces Claude API calls)
 
         if (
             best_offer is None

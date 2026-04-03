@@ -1,8 +1,12 @@
+'use client';
+
+import { useFormStatus } from 'react-dom';
 import type { InventorySuggestion } from '../../../shared/types/offer-brief';
 import { prefillObjectiveAction } from '../../app/designer/actions';
 
 interface InventorySuggestionCardProps {
   suggestion: InventorySuggestion;
+  isDisabled?: boolean;
 }
 
 const URGENCY_STYLES: Record<string, string> = {
@@ -17,7 +21,23 @@ const URGENCY_LABELS: Record<string, string> = {
   low: 'NORMAL',
 };
 
-export function InventorySuggestionCard({ suggestion }: InventorySuggestionCardProps) {
+function GenerateFromSuggestionButton({ isDisabled }: { isDisabled: boolean }) {
+  const { pending } = useFormStatus();
+  const disabled = isDisabled || pending;
+
+  return (
+    <button
+      type="submit"
+      disabled={disabled}
+      className="w-full rounded-md border border-ct-red bg-white px-4 py-2 text-sm font-medium text-ct-red transition hover:bg-ct-red hover:text-white focus:outline-none focus:ring-2 focus:ring-ct-red focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-white disabled:hover:text-gray-400"
+      aria-label={isDisabled ? 'Offer already generated for this suggestion' : 'Generate offer from this suggestion'}
+    >
+      {isDisabled ? 'Offer Generated' : pending ? 'Opening...' : 'Generate Offer'}
+    </button>
+  );
+}
+
+export function InventorySuggestionCard({ suggestion, isDisabled = false }: InventorySuggestionCardProps) {
   const urgencyStyle = URGENCY_STYLES[suggestion.urgency] ?? URGENCY_STYLES.medium;
   const urgencyLabel = URGENCY_LABELS[suggestion.urgency] ?? suggestion.urgency;
 
@@ -52,13 +72,8 @@ export function InventorySuggestionCard({ suggestion }: InventorySuggestionCardP
 
       <form action={prefillObjectiveAction} className="mt-auto">
         <input type="hidden" name="objective" value={suggestion.suggested_objective} />
-        <button
-          type="submit"
-          className="w-full rounded-md border border-ct-red bg-white px-4 py-2 text-sm font-medium text-ct-red transition hover:bg-ct-red hover:text-white focus:outline-none focus:ring-2 focus:ring-ct-red focus:ring-offset-2"
-          aria-label={`Use objective: ${suggestion.suggested_objective}`}
-        >
-          Generate Offer
-        </button>
+        <input type="hidden" name="source_product_id" value={suggestion.product_id} />
+        <GenerateFromSuggestionButton isDisabled={isDisabled} />
       </form>
     </div>
   );

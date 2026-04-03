@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { InventorySuggestion } from '../../../shared/types/offer-brief';
 import { AISuggestionsPanel } from './AISuggestionsPanel';
 import { ManualEntryForm } from './ManualEntryForm';
@@ -8,6 +8,7 @@ import { ManualEntryForm } from './ManualEntryForm';
 interface ModeSelectorTabsProps {
   suggestions: InventorySuggestion[];
   initialObjective?: string;
+  initialSourceProductId?: string;
 }
 
 type Mode = 'ai' | 'manual';
@@ -25,8 +26,48 @@ const TABS: { id: Mode; label: string; description: string }[] = [
   },
 ];
 
-export function ModeSelectorTabs({ suggestions, initialObjective }: ModeSelectorTabsProps) {
+const DISABLED_SUGGESTIONS_STORAGE_KEY = 'tristar.designer.disabled-suggestions';
+
+export function ModeSelectorTabs({
+  suggestions,
+  initialObjective,
+  initialSourceProductId,
+}: ModeSelectorTabsProps) {
   const [mode, setMode] = useState<Mode>(initialObjective ? 'manual' : 'ai');
+  const [disabledSuggestionIds, setDisabledSuggestionIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(DISABLED_SUGGESTIONS_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setDisabledSuggestionIds(parsed.filter((id): id is string => typeof id === 'string'));
+      }
+    } catch {
+      // Ignore malformed browser cache values.
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      DISABLED_SUGGESTIONS_STORAGE_KEY,
+      JSON.stringify(disabledSuggestionIds),
+    );
+  }, [disabledSuggestionIds]);
+
+  function markSuggestionDisabled(sourceProductId?: string) {
+    if (!sourceProductId) {
+      return;
+    }
+
+    setDisabledSuggestionIds((prev) =>
+      prev.includes(sourceProductId) ? prev : [...prev, sourceProductId],
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -68,7 +109,10 @@ export function ModeSelectorTabs({ suggestions, initialObjective }: ModeSelector
         aria-labelledby="tab-ai"
         hidden={mode !== 'ai'}
       >
-        <AISuggestionsPanel suggestions={suggestions} />
+        <AISuggestionsPanel
+          suggestions={suggestions}
+          disabledSuggestionIds={disabledSuggestionIds}
+        />
       </div>
 
       <div
@@ -77,7 +121,11 @@ export function ModeSelectorTabs({ suggestions, initialObjective }: ModeSelector
         aria-labelledby="tab-manual"
         hidden={mode !== 'manual'}
       >
-        <ManualEntryForm initialObjective={initialObjective} />
+        <ManualEntryForm
+          initialObjective={initialObjective}
+          sourceProductId={initialSourceProductId}
+          onOfferApproved={markSuggestionDisabled}
+        />
       </div>
     </div>
   );

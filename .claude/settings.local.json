@@ -107,7 +107,13 @@
       "Bash(powershell.exe -NoProfile -Command \"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $env:PYTHONIOENCODING=''utf-8''; python -c \"\"import modal; img = modal.Image.debian_slim\\(python_version=''3.11''\\).pip_install\\(''fastapi''\\).add_local_dir\\(''src'', remote_path=''/root/src''\\); print\\(''add_local_dir OK''\\)\"\"\")",
       "Bash(powershell.exe -NoProfile -Command \"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; modal deploy modal_app.py 2>&1\")",
       "Bash(powershell.exe -NoProfile -File \"deploy_modal.ps1\")",
-      "Bash(powershell.exe -NoProfile -Command \"$base = 'https://bhuvansingh6p--tristar-api-fastapi-app.modal.run'; Write-Host '=== Health ==='; \\(Invoke-WebRequest -Uri \\\\\"$base/health\\\\\" -UseBasicParsing\\).Content\" 2>&1)"
+      "Bash(powershell.exe -NoProfile -Command \"$base = 'https://bhuvansingh6p--tristar-api-fastapi-app.modal.run'; Write-Host '=== Health ==='; \\(Invoke-WebRequest -Uri \\\\\"$base/health\\\\\" -UseBasicParsing\\).Content\" 2>&1)",
+      "Bash(pip3 --version)",
+      "Bash(pip3 install:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(PYTHONPATH=. .venv/bin/python -c \"from src.backend.main import app; print\\('Backend imports OK'\\)\" 2>&1)",
+      "Bash(PYTHONPATH=. .venv/bin/pytest tests/unit/backend/ -v --tb=short)",
+      "Bash(PYTHONPATH=. .venv/bin/pytest tests/unit/backend/services/test_claude_api.py tests/unit/backend/services/test_scout_match_service.py::TestScoutMatchService::test_early_exit_on_first_match -v --tb=long)"
     ]
   }
 }

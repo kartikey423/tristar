@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: 'dashboard' },
-  { href: '/designer', label: 'Designer', icon: 'auto_awesome' },
-  { href: '/hub', label: 'Hub', icon: 'hub' },
-  { href: '/scout', label: 'Scout', icon: 'track_changes' },
+  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+  { href: "/designer", label: "Designer", icon: "auto_awesome" },
+  { href: "/hub", label: "Hub", icon: "hub" },
+  { href: "/scout", label: "Scout", icon: "track_changes" },
 ];
 
 export function SidebarNav() {
@@ -16,14 +16,16 @@ export function SidebarNav() {
   return (
     <>
       {NAV_ITEMS.map(({ href, label, icon }) => {
-        const isActive =
-          href === '/' ? pathname === '/' : pathname.startsWith(href);
+        const isDashboard = href === "/dashboard";
+        const isActive = isDashboard
+          ? pathname === "/" || pathname.startsWith("/dashboard")
+          : pathname.startsWith(href);
 
         return (
           <Link
             key={href}
             href={href}
-            className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+            className={`sidebar-nav-item ${isActive ? "active" : ""}`}
           >
             <span
               className="material-symbols-outlined text-[20px]"

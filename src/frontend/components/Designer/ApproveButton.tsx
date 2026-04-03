@@ -7,6 +7,7 @@ import { Spinner } from './Spinner';
 
 interface ApproveButtonProps {
   offer: OfferBrief;
+  onApproved?: () => void;
 }
 
 type ApproveState = 'idle' | 'pending' | 'success' | 'error';
@@ -22,7 +23,7 @@ function constructLabel(type: string): string {
   }
 }
 
-export function ApproveButton({ offer }: ApproveButtonProps) {
+export function ApproveButton({ offer, onApproved }: ApproveButtonProps) {
   const [approveState, setApproveState] = useState<ApproveState>('idle');
   const [rejectState, setRejectState] = useState<RejectState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export function ApproveButton({ offer }: ApproveButtonProps) {
       const result = await approveOfferAction(offer.offer_id);
       if (result.success) {
         setApproveState('success');
+        onApproved?.();
       } else {
         addOptimistic(offer.status); // Revert optimistic update on error
         setApproveState('error');

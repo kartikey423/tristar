@@ -7,11 +7,15 @@ import { InventorySuggestionCard } from './InventorySuggestionCard';
 
 interface AISuggestionsPanelProps {
   suggestions: InventorySuggestion[];
+  disabledSuggestionIds?: string[];
 }
 
 const REFRESH_INTERVAL_S = 60;
 
-export function AISuggestionsPanel({ suggestions: initialSuggestions }: AISuggestionsPanelProps) {
+export function AISuggestionsPanel({
+  suggestions: initialSuggestions,
+  disabledSuggestionIds = [],
+}: AISuggestionsPanelProps) {
   const [suggestions, setSuggestions] = useState<InventorySuggestion[]>(initialSuggestions);
   const [secondsAgo, setSecondsAgo] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -112,7 +116,11 @@ export function AISuggestionsPanel({ suggestions: initialSuggestions }: AISugges
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {suggestions.map((suggestion) => (
-          <InventorySuggestionCard key={suggestion.product_id} suggestion={suggestion} />
+          <InventorySuggestionCard
+            key={suggestion.product_id}
+            suggestion={suggestion}
+            isDisabled={disabledSuggestionIds.includes(suggestion.product_id)}
+          />
         ))}
       </div>
     </div>

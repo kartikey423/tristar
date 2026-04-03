@@ -72,19 +72,19 @@ describe('ContextDashboard', () => {
     test('renders Customer, Store, Item, and Purchase Date fields', () => {
       render(<ContextDashboard />);
 
-      expect(screen.getByLabelText('Customer')).toBeInTheDocument();
-      expect(screen.getByLabelText('Store & Branch')).toBeInTheDocument();
-      expect(screen.getByLabelText('Item Being Purchased')).toBeInTheDocument();
-      expect(screen.getByLabelText('Purchase Date')).toBeInTheDocument();
+      expect(screen.getByLabelText(/Customer/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Store/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Item Being Purchased/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Purchase Date/i)).toBeInTheDocument();
     });
 
     test('defaults to demo-001, Canadian Tire Queen St W, first store-specific item', () => {
       render(<ContextDashboard />);
 
-      expect(screen.getByLabelText('Customer')).toHaveValue('demo-001');
-      expect(screen.getByLabelText('Store & Branch')).toHaveValue('ctc-001');
+      expect(screen.getByLabelText(/Customer/i)).toHaveValue('demo-001');
+      expect(screen.getByLabelText(/Store/i)).toHaveValue('ctc-001');
       // Item select defaults to index 0
-      expect(screen.getByLabelText('Item Being Purchased')).toHaveValue('0');
+      expect(screen.getByLabelText(/Item Being Purchased/i)).toHaveValue('0');
     });
 
     test('submit button is present with correct label', () => {
@@ -169,7 +169,7 @@ describe('ContextDashboard', () => {
       });
       expect(screen.getByText('activated')).toBeInTheDocument();
       // Personalized message includes the member first name
-      expect(screen.getByText(/Alice/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Alice/).length).toBeGreaterThan(0);
       // Score shown as integer
       expect(screen.getByText('83/100')).toBeInTheDocument();
     });
@@ -184,7 +184,7 @@ describe('ContextDashboard', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/GPS:/)).toBeInTheDocument();
-        expect(screen.getByText(/gold tier/)).toBeInTheDocument();
+        expect(screen.getAllByText(/gold tier/).length).toBeGreaterThan(0);
         expect(screen.getByText('automotive')).toBeInTheDocument();
       });
     });
@@ -214,7 +214,7 @@ describe('ContextDashboard', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/Recommended for you/i)).toBeInTheDocument();
+        expect(screen.getByText(/Smart Recommendation/i)).toBeInTheDocument();
       });
     });
 

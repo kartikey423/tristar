@@ -31,9 +31,15 @@ function SubmitButton() {
 
 interface ManualEntryFormProps {
   initialObjective?: string;
+  sourceProductId?: string;
+  onOfferApproved?: (sourceProductId?: string) => void;
 }
 
-export function ManualEntryForm({ initialObjective }: ManualEntryFormProps) {
+export function ManualEntryForm({
+  initialObjective,
+  sourceProductId,
+  onOfferApproved,
+}: ManualEntryFormProps) {
   const [generatedOffer, setGeneratedOffer] = useState<OfferBrief | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -105,7 +111,10 @@ export function ManualEntryForm({ initialObjective }: ManualEntryFormProps) {
 
       {generatedOffer && (
         <div className="mt-6">
-          <OfferBriefCard offer={generatedOffer} />
+          <OfferBriefCard
+            offer={generatedOffer}
+            onApproved={() => onOfferApproved?.(sourceProductId)}
+          />
         </div>
       )}
     </div>

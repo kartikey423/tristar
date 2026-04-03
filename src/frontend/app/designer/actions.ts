@@ -6,10 +6,22 @@ import { GenerateOfferInputSchema } from '../../../shared/types/offer-brief';
 import { SERVER_API_BASE } from '../../lib/config';
 
 function getServiceHeaders(): HeadersInit {
+  // Ensure token is read from environment
+  let token = process.env.MARKETER_JWT;
+
+  // Fallback: use hardcoded dev token if env var is not set
+  // This token has 'marketing' role: {'sub': 'marketer-demo', 'role': 'marketing'}
+  if (!token) {
+    token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYXJrZXRlci1kZW1vIiwicm9sZSI6Im1hcmtldGluZyJ9.AIro1O38GcdY4sFzsvVwm-OJ7qosv1Q9f13vkxaDGGY';
+    console.warn('⚠️  MARKETER_JWT env var not set, using fallback dev token');
+  }
+
+  console.log('🔐 Using authorization token');
+
   return {
     'Content-Type': 'application/json',
     // In production: read from server-side session/cookie
-    Authorization: `Bearer ${process.env.MARKETER_JWT ?? ''}`,
+    Authorization: `Bearer ${token}`,
   };
 }
 
@@ -39,6 +51,25 @@ export async function generateOfferAction(
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       const detail = (body as Record<string, unknown>)?.detail;
+
+      // Specific handling for authentication errors
+      if (response.status === 401) {
+        console.error('❌ Authentication failed (401):', detail);
+        console.error('   MARKETER_JWT:', process.env.MARKETER_JWT ? 'SET' : 'NOT SET');
+        return {
+          success: false,
+          error: 'Authentication failed. The JWT token may be invalid or expired. Please check the configuration.'
+        };
+      }
+
+      if (response.status === 403) {
+        console.error('❌ Permission denied (403):', detail);
+        return {
+          success: false,
+          error: 'Permission denied. User role may not be authorized for offer generation.'
+        };
+      }
+
       // Return only known safe string messages; reject complex error objects
       const error =
         typeof detail === 'string' && detail.length < 200
@@ -66,6 +97,24 @@ export async function approveOfferAction(
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       const detail = (body as Record<string, unknown>)?.detail;
+
+      // Specific handling for authentication errors
+      if (response.status === 401) {
+        console.error('❌ Authentication failed (401):', detail);
+        return {
+          success: false,
+          error: 'Authentication failed. Please ensure the API is properly configured.'
+        };
+      }
+
+      if (response.status === 403) {
+        console.error('❌ Permission denied (403):', detail);
+        return {
+          success: false,
+          error: 'Permission denied. User may not be authorized to approve offers.'
+        };
+      }
+
       const error =
         typeof detail === 'string' && detail.length < 200
           ? detail
@@ -74,7 +123,8 @@ export async function approveOfferAction(
     }
 
     return { success: true, message: 'Offer saved to Hub' };
-  } catch {
+  } catch (error) {
+    console.error('Error in approveOfferAction:', error);
     return { success: false, error: 'Failed to connect to TriStar API. Please try again.' };
   }
 }
@@ -137,5 +187,12 @@ export async function updateConstructValueAction(
  */
 export async function prefillObjectiveAction(formData: FormData): Promise<never> {
   const objective = (formData.get('objective') as string | null) ?? '';
-  redirect(`/designer?objective=${encodeURIComponent(objective)}`);
+  const sourceProductId = (formData.get('source_product_id') as string | null) ?? '';
+
+  const params = new URLSearchParams({ objective });
+  if (sourceProductId) {
+    params.set('sourceProductId', sourceProductId);
+  }
+
+  redirect(`/designer?${params.toString()}`);
 }

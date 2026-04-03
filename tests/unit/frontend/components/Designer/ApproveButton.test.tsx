@@ -108,7 +108,7 @@ describe('ApproveButton', () => {
       const approvedOffer = { ...makeMockOffer('low'), status: 'approved' as const };
       render(<ApproveButton offer={approvedOffer} />);
 
-      expect(screen.getByText('Saved to Hub')).toBeInTheDocument();
+      expect(screen.getByText('Success: Offer in Hub')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /Approve/i })).not.toBeInTheDocument();
     });
   });

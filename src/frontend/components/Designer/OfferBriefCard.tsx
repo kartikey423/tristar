@@ -4,6 +4,7 @@ import { ApproveButton } from './ApproveButton';
 
 interface OfferBriefCardProps {
   offer: OfferBrief;
+  onApproved?: () => void;
 }
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -13,7 +14,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   in_app: 'In-App',
 };
 
-export function OfferBriefCard({ offer }: OfferBriefCardProps) {
+export function OfferBriefCard({ offer, onApproved }: OfferBriefCardProps) {
   const isPurchaseTriggered = offer.trigger_type === 'purchase_triggered';
   const sortedChannels = [...offer.channels].sort((a, b) => a.priority - b.priority);
 
@@ -126,7 +127,7 @@ export function OfferBriefCard({ offer }: OfferBriefCardProps) {
 
         {/* Approve Button */}
         <div className="pt-2">
-          <ApproveButton offer={offer} />
+          <ApproveButton offer={offer} onApproved={onApproved} />
         </div>
       </div>
     </article>
