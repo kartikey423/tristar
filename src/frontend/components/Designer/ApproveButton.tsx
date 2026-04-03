@@ -163,7 +163,7 @@ export function ApproveButton({ offer, onApproved }: ApproveButtonProps) {
       <button
         type="button"
         onClick={handleApprove}
-        disabled={isCritical || approveState === 'pending' || approveState === 'success'}
+        disabled={isCritical || approveState === 'pending'}
         title={isCritical ? 'Critical risk detected — cannot approve' : undefined}
         aria-disabled={isCritical}
         aria-label={isCritical ? 'Cannot approve — critical risk detected' : 'Approve offer and save to Hub'}

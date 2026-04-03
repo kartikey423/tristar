@@ -32,7 +32,7 @@ function SubmitButton() {
 interface ManualEntryFormProps {
   initialObjective?: string;
   sourceProductId?: string;
-  onOfferApproved?: (sourceProductId?: string) => void;
+  onOfferApproved?: (payload: { sourceProductId?: string; objective?: string }) => void;
 }
 
 export function ManualEntryForm({
@@ -113,7 +113,12 @@ export function ManualEntryForm({
         <div className="mt-6">
           <OfferBriefCard
             offer={generatedOffer}
-            onApproved={() => onOfferApproved?.(sourceProductId)}
+            onApproved={() =>
+              onOfferApproved?.({
+                sourceProductId,
+                objective: generatedOffer.objective,
+              })
+            }
           />
         </div>
       )}

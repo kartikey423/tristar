@@ -59,14 +59,28 @@ export function ModeSelectorTabs({
     );
   }, [disabledSuggestionIds]);
 
-  function markSuggestionDisabled(sourceProductId?: string) {
-    if (!sourceProductId) {
+  function markSuggestionDisabled(payload: { sourceProductId?: string; objective?: string }) {
+    const idsToDisable = new Set<string>();
+
+    if (payload.sourceProductId) {
+      idsToDisable.add(payload.sourceProductId);
+    }
+
+    if (payload.objective) {
+      suggestions
+        .filter((suggestion) => suggestion.suggested_objective === payload.objective)
+        .forEach((suggestion) => idsToDisable.add(suggestion.product_id));
+    }
+
+    if (idsToDisable.size === 0) {
       return;
     }
 
-    setDisabledSuggestionIds((prev) =>
-      prev.includes(sourceProductId) ? prev : [...prev, sourceProductId],
-    );
+    setDisabledSuggestionIds((prev) => {
+      const merged = new Set(prev);
+      idsToDisable.forEach((id) => merged.add(id));
+      return Array.from(merged);
+    });
   }
 
   return (
