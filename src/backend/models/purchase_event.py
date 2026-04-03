@@ -38,6 +38,7 @@ class MemberProfile(BaseModel):
     preferred_categories: list[str] = Field(default_factory=list)
     last_ctc_purchase_days_ago: Optional[int] = None
     loyalty_tier: str = "standard"  # standard | silver | gold | platinum
+    notifications_enabled: bool = True  # CASL compliance: False = member opted out of marketing
 
 
 class NearbyStore(BaseModel):

@@ -220,3 +220,36 @@ class TestScoutMatchService:
         # Should not raise; weather from override
         result = await svc.match(req)
         assert result is not None
+
+    async def test_casl_opt_out_passes_notifications_disabled_to_can_deliver(self):
+        """CASL: member with notifications_enabled=False → can_deliver called with False."""
+        mock_member = MagicMock()
+        mock_member.notifications_enabled = False
+
+        svc = _make_service(
+            active_offers=[_make_offer()],
+            score_result=_make_score_result(75.0),
+            can_deliver=(True, None),
+        )
+        svc._member_store.get.return_value = mock_member
+
+        await svc.match(_make_request())
+
+        svc._constraints.can_deliver.assert_called_once()
+        kwargs = svc._constraints.can_deliver.call_args.kwargs
+        assert kwargs["member_notifications_enabled"] is False
+
+    async def test_casl_opt_out_with_unknown_member_defaults_to_enabled(self):
+        """CASL: unknown member (get returns None) → member_notifications_enabled defaults to True."""
+        svc = _make_service(
+            active_offers=[_make_offer()],
+            score_result=_make_score_result(75.0),
+            can_deliver=(True, None),
+        )
+        svc._member_store.get.return_value = None
+
+        await svc.match(_make_request())
+
+        svc._constraints.can_deliver.assert_called_once()
+        kwargs = svc._constraints.can_deliver.call_args.kwargs
+        assert kwargs["member_notifications_enabled"] is True

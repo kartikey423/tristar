@@ -1,26 +1,18 @@
 'use client';
 
-/**
- * ActivationFeed — shows the last N Scout activation records for a member.
- *
- * Client Component: re-fetches when memberId or refreshTrigger changes.
- * Calls GET /api/scout/activation-log/<member_id> via fetchActivationLog().
- */
-
 import { useEffect, useState } from 'react';
 import type { ActivationLogEntry } from '@/lib/scout-api';
 import { fetchActivationLog } from '@/lib/scout-api';
 
 const OUTCOME_STYLES: Record<string, string> = {
-  activated: 'bg-green-100 text-green-700',
-  queued: 'bg-yellow-100 text-yellow-700',
-  rate_limited: 'bg-red-100 text-red-700',
-  error: 'bg-gray-100 text-gray-600',
+  activated: 'badge-success',
+  queued: 'badge-warning',
+  rate_limited: 'badge-danger',
+  error: 'badge-neutral',
 };
 
 interface ActivationFeedProps {
   memberId: string;
-  /** Increment / change to trigger a re-fetch (e.g., pass the latest result). */
   refreshTrigger?: unknown;
 }
 
@@ -36,7 +28,7 @@ export function ActivationFeed({ memberId, refreshTrigger }: ActivationFeedProps
         const data = await fetchActivationLog(memberId);
         if (!cancelled) setEntries(data);
       } catch {
-        // network failure — leave existing entries, clear loading
+        // network failure — leave existing entries
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -48,8 +40,8 @@ export function ActivationFeed({ memberId, refreshTrigger }: ActivationFeedProps
 
   if (loading && entries.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
-        Loading activation history…
+      <div className="card p-4 text-sm text-gray-400">
+        Loading activation history...
       </div>
     );
   }
@@ -59,13 +51,13 @@ export function ActivationFeed({ memberId, refreshTrigger }: ActivationFeedProps
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <div className="px-5 py-3 border-b border-gray-100">
+    <div className="card overflow-hidden">
+      <div className="px-5 py-3 bg-surface-low">
         <h3 className="text-sm font-semibold text-gray-700">
-          Activation History — {memberId}
+          Activation History
         </h3>
       </div>
-      <ul className="divide-y divide-gray-100">
+      <ul className="divide-y divide-gray-50">
         {entries.map((entry) => (
           <ActivationRow key={`${entry.offer_id}-${entry.timestamp}`} entry={entry} />
         ))}
@@ -83,17 +75,17 @@ function ActivationRow({ entry }: { entry: ActivationLogEntry }) {
   });
 
   return (
-    <li className="flex items-center justify-between px-5 py-3 text-sm">
+    <li className="flex items-center justify-between px-5 py-2.5 text-sm">
       <div className="flex items-center gap-3 min-w-0">
         <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium capitalize ${OUTCOME_STYLES[entry.outcome] ?? 'bg-gray-100 text-gray-600'}`}
+          className={`badge ${OUTCOME_STYLES[entry.outcome] ?? 'badge-neutral'} capitalize text-[10px]`}
         >
           {entry.outcome.replace('_', ' ')}
         </span>
-        <span className="truncate text-gray-700 font-mono text-xs">{entry.offer_id}</span>
+        <code className="text-xs text-gray-400 font-mono truncate">{entry.offer_id}</code>
       </div>
       <div className="flex items-center gap-3 shrink-0 ml-4">
-        <span className="text-gray-500">{entry.score.toFixed(1)}</span>
+        <span className="text-sm font-medium text-gray-700">{entry.score.toFixed(1)}</span>
         <span className="text-xs text-gray-400">{entry.scoring_method}</span>
         <span className="text-xs text-gray-400">{ts}</span>
       </div>

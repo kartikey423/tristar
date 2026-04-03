@@ -5,16 +5,25 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApproveButton } from '../../../../../src/frontend/components/Designer/ApproveButton';
-import { jest } from '@jest/globals';
 import type { OfferBrief } from '../../../../../src/shared/types/offer-brief';
 
 jest.mock('../../../../../src/frontend/app/designer/actions', () => ({
   approveOfferAction: jest.fn(),
   generateOfferAction: jest.fn(),
+  rejectOfferAction: jest.fn(),
+  updateConstructValueAction: jest.fn(),
 }));
 
-import { approveOfferAction } from '../../../../../src/frontend/app/designer/actions';
+import {
+  approveOfferAction,
+  rejectOfferAction,
+  updateConstructValueAction,
+} from '../../../../../src/frontend/app/designer/actions';
 const mockApproveAction = approveOfferAction as jest.MockedFunction<typeof approveOfferAction>;
+const mockRejectAction = rejectOfferAction as jest.MockedFunction<typeof rejectOfferAction>;
+const mockUpdateConstructAction = updateConstructValueAction as jest.MockedFunction<
+  typeof updateConstructValueAction
+>;
 
 function makeMockOffer(riskSeverity: 'low' | 'medium' | 'critical' = 'low'): OfferBrief {
   return {
@@ -52,7 +61,8 @@ describe('ApproveButton', () => {
     test('button is disabled when severity is critical', () => {
       render(<ApproveButton offer={makeMockOffer('critical')} />);
 
-      const button = screen.getByRole('button', { name: /Blocked/i });
+      // Accessible name comes from aria-label, not visible text
+      const button = screen.getByRole('button', { name: /cannot approve/i });
       expect(button).toBeDisabled();
     });
 
@@ -66,8 +76,8 @@ describe('ApproveButton', () => {
     test('does not call approveOfferAction when severity is critical', async () => {
       render(<ApproveButton offer={makeMockOffer('critical')} />);
 
-      // Try clicking disabled button
-      const button = screen.getByRole('button', { name: /Blocked/i });
+      // Try clicking disabled button (accessible name from aria-label)
+      const button = screen.getByRole('button', { name: /cannot approve/i });
       await userEvent.click(button);
 
       expect(mockApproveAction).not.toHaveBeenCalled();
@@ -91,16 +101,15 @@ describe('ApproveButton', () => {
   });
 
   describe('Success State', () => {
-    test('shows Saved to Hub confirmation after successful approval', async () => {
-      mockApproveAction.mockResolvedValue({ success: true, message: 'Offer saved to Hub' });
+    // The "Saved to Hub" banner is shown when offer.status === 'approved' (parent re-renders
+    // after the server action completes). useOptimistic reverts once the transition ends,
+    // so we verify the steady-state by passing an already-approved offer directly.
+    test('shows Saved to Hub when offer is already approved', () => {
+      const approvedOffer = { ...makeMockOffer('low'), status: 'approved' as const };
+      render(<ApproveButton offer={approvedOffer} />);
 
-      render(<ApproveButton offer={makeMockOffer('low')} />);
-
-      await userEvent.click(screen.getByRole('button', { name: /Approve/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText('Saved to Hub')).toBeInTheDocument();
-      });
+      expect(screen.getByText('Saved to Hub')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Approve/i })).not.toBeInTheDocument();
     });
   });
 
@@ -118,6 +127,64 @@ describe('ApproveButton', () => {
       await waitFor(() => {
         expect(screen.getByText('Hub API temporarily unavailable')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Retry/i })).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Reject Offer', () => {
+    test('shows confirmation dialog when Reject Offer is clicked', async () => {
+      render(<ApproveButton offer={makeMockOffer('low')} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Reject Offer/i }));
+
+      expect(screen.getByText('Reject this offer?')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Yes, Reject/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Cancel/i })).toBeInTheDocument();
+    });
+
+    test('cancel hides confirmation dialog', async () => {
+      render(<ApproveButton offer={makeMockOffer('low')} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Reject Offer/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Cancel/i }));
+
+      expect(screen.queryByText('Reject this offer?')).not.toBeInTheDocument();
+    });
+
+    test('calls rejectOfferAction on confirmation and shows rejected state', async () => {
+      mockRejectAction.mockResolvedValue({ success: true });
+      render(<ApproveButton offer={makeMockOffer('low')} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Reject Offer/i }));
+      await userEvent.click(screen.getByRole('button', { name: /Yes, Reject/i }));
+
+      await waitFor(() => {
+        expect(mockRejectAction).toHaveBeenCalledWith('test-offer-123');
+        expect(screen.getByText(/Offer rejected and removed/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Discount Override', () => {
+    test('shows construct value input pre-filled with offer construct value', () => {
+      render(<ApproveButton offer={makeMockOffer('low')} />);
+
+      const input = screen.getByLabelText(/Points Multiplier/i) as HTMLInputElement;
+      expect(input).toBeInTheDocument();
+      expect(input.value).toBe('3');
+    });
+
+    test('calls updateConstructValueAction when Update is clicked', async () => {
+      mockUpdateConstructAction.mockResolvedValue({ success: true });
+      render(<ApproveButton offer={makeMockOffer('low')} />);
+
+      const input = screen.getByLabelText(/Points Multiplier/i);
+      await userEvent.clear(input);
+      await userEvent.type(input, '5');
+      await userEvent.click(screen.getByRole('button', { name: /Update/i }));
+
+      await waitFor(() => {
+        expect(mockUpdateConstructAction).toHaveBeenCalledWith('test-offer-123', 5);
       });
     });
   });

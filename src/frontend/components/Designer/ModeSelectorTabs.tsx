@@ -1,13 +1,5 @@
 'use client';
 
-/**
- * ModeSelectorTabs — Client Component.
- *
- * Tab switcher with useState<'ai' | 'manual'>.
- * Renders AISuggestionsPanel (server-fetched suggestions passed as props)
- * or ManualEntryForm based on active mode.
- */
-
 import { useState } from 'react';
 import type { InventorySuggestion } from '../../../shared/types/offer-brief';
 import { AISuggestionsPanel } from './AISuggestionsPanel';
@@ -40,7 +32,7 @@ export function ModeSelectorTabs({ suggestions, initialObjective }: ModeSelector
     <div className="space-y-6">
       {/* Tab navigation */}
       <div
-        className="flex gap-1 rounded-lg bg-gray-100 p-1"
+        className="inline-flex rounded-md bg-surface-low p-1"
         role="tablist"
         aria-label="Offer creation mode"
       >
@@ -53,10 +45,10 @@ export function ModeSelectorTabs({ suggestions, initialObjective }: ModeSelector
             aria-selected={mode === tab.id}
             aria-controls={`panel-${tab.id}`}
             onClick={() => setMode(tab.id)}
-            className={`flex-1 rounded-md px-4 py-2.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset ${
+            className={`rounded px-4 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset ${
               mode === tab.id
-                ? 'bg-white text-blue-700 shadow-sm border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-gray-900 text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             {tab.label}
@@ -65,13 +57,13 @@ export function ModeSelectorTabs({ suggestions, initialObjective }: ModeSelector
       </div>
 
       {/* Tab description */}
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-400">
         {TABS.find((t) => t.id === mode)?.description}
       </p>
 
       {/* Tab panels */}
       <div
-        id={`panel-ai`}
+        id="panel-ai"
         role="tabpanel"
         aria-labelledby="tab-ai"
         hidden={mode !== 'ai'}
@@ -80,7 +72,7 @@ export function ModeSelectorTabs({ suggestions, initialObjective }: ModeSelector
       </div>
 
       <div
-        id={`panel-manual`}
+        id="panel-manual"
         role="tabpanel"
         aria-labelledby="tab-manual"
         hidden={mode !== 'manual'}

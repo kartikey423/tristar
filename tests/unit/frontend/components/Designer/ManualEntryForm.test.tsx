@@ -2,10 +2,9 @@
  * Unit tests for ManualEntryForm — COMP-011.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ManualEntryForm } from '../../../../../src/frontend/components/Designer/ManualEntryForm';
-import { jest } from '@jest/globals';
 
 // Mock Server Actions
 jest.mock('../../../../../src/frontend/app/designer/actions', () => ({
@@ -48,10 +47,17 @@ describe('ManualEntryForm', () => {
   });
 
   describe('Form Validation', () => {
+    // userEvent.click triggers form.requestSubmit() which runs HTML5 native constraint
+    // validation (required, minLength) before dispatching the submit event. Because native
+    // validation blocks the submit, React's action handler never fires and the Zod error
+    // message is never rendered. Use fireEvent.submit to bypass native validation so the
+    // React action handler runs and Zod produces the custom error message.
+
     test('shows error when objective is empty on submit', async () => {
       render(<ManualEntryForm />);
 
-      await userEvent.click(screen.getByRole('button', { name: /Generate Offer/i }));
+      const form = screen.getByLabelText('Marketing Objective').closest('form')!;
+      fireEvent.submit(form);
 
       await waitFor(() => {
         expect(
@@ -64,28 +70,33 @@ describe('ManualEntryForm', () => {
       render(<ManualEntryForm />);
 
       await userEvent.type(screen.getByLabelText('Marketing Objective'), 'too short');
-      await userEvent.click(screen.getByRole('button', { name: /Generate Offer/i }));
+      const form = screen.getByLabelText('Marketing Objective').closest('form')!;
+      fireEvent.submit(form);
 
       await waitFor(() => {
         expect(screen.getByRole('alert')).toBeInTheDocument();
       });
     });
 
-    test('clears validation error when user starts typing', async () => {
+    test('clears validation error on next valid submit', async () => {
       render(<ManualEntryForm />);
 
-      // Trigger error
-      await userEvent.click(screen.getByRole('button', { name: /Generate Offer/i }));
+      // Trigger error bypassing native HTML5 validation
+      const form = screen.getByLabelText('Marketing Objective').closest('form')!;
+      fireEvent.submit(form);
       await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
 
-      // Start typing — error should clear on next submit attempt
+      // Type a valid objective and re-submit — error should be gone
       await userEvent.type(
         screen.getByLabelText('Marketing Objective'),
         'This is a valid objective for testing purposes',
       );
+      mockGenerateAction.mockResolvedValue({ success: true, offer: mockOffer });
+      fireEvent.submit(form);
 
-      // Form no longer shows old error for the field
-      expect(screen.queryByText(/at least 10 characters/i)).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByText(/at least 10 characters/i)).not.toBeInTheDocument();
+      });
     });
   });
 

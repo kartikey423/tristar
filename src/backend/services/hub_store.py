@@ -45,6 +45,10 @@ class HubStore(Protocol):
 
     async def exists(self, offer_id: str) -> bool: ...
 
+    async def delete(self, offer_id: str) -> bool:
+        """Delete an offer. Returns True if deleted, False if not found."""
+        ...
+
     async def ping(self) -> bool:
         """Returns True if the store is healthy."""
         ...
@@ -102,6 +106,12 @@ class InMemoryHubStore:
 
     async def exists(self, offer_id: str) -> bool:
         return offer_id in self._store
+
+    async def delete(self, offer_id: str) -> bool:
+        if offer_id in self._store:
+            del self._store[offer_id]
+            return True
+        return False
 
     async def ping(self) -> bool:
         return True
@@ -185,6 +195,13 @@ class RedisHubStore:
             return bool(await self._redis.exists(self._key(offer_id)))
         except Exception as e:
             raise RedisUnavailableError(f"Redis EXISTS failed: {e}") from e
+
+    async def delete(self, offer_id: str) -> bool:
+        try:
+            result = await self._redis.delete(self._key(offer_id))
+            return result > 0
+        except Exception as e:
+            raise RedisUnavailableError(f"Redis DELETE failed: {e}") from e
 
     async def ping(self) -> bool:
         try:

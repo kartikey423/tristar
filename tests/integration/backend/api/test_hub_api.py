@@ -109,13 +109,13 @@ class TestSaveOffer:
         assert response.status_code == 409
         assert offer["offer_id"] in response.json()["detail"]
 
-    async def test_save_requires_system_role(self, client, marketing_token_patch):
-        """Non-system callers must be rejected with 403."""
+    async def test_save_allowed_with_marketing_role(self, client, marketing_token_patch):
+        """Marketing-role callers are now allowed to save offers (marketer-initiated flow)."""
         offer = marketer_offer()
         with marketing_token_patch:
             response = await client.post("/api/hub/offers", json=offer, headers=MARKETING_HEADERS)
 
-        assert response.status_code == 403
+        assert response.status_code == 201
 
     async def test_save_requires_auth(self, client):
         offer = marketer_offer()
@@ -277,7 +277,8 @@ class TestUpdateStatus:
 
         assert response.status_code == 404
 
-    async def test_update_requires_system_role(self, client, marketing_token_patch, system_token_patch):
+    async def test_update_allowed_with_marketing_role(self, client, marketing_token_patch, system_token_patch):
+        """Marketing-role callers are now allowed to update offer status (Hub page flow)."""
         offer = marketer_offer()
         with system_token_patch:
             await client.post("/api/hub/offers", json=offer, headers=SYSTEM_HEADERS)
@@ -289,7 +290,7 @@ class TestUpdateStatus:
                 headers=MARKETING_HEADERS,
             )
 
-        assert response.status_code == 403
+        assert response.status_code == 200
 
     async def test_invalid_transition_returns_422(self, client, system_token_patch):
         """AC-010: draft → active is an invalid transition — must return 422."""

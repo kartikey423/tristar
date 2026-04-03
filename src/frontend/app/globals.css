@@ -1,0 +1,99 @@
+/* Google Fonts must be @imported before any other CSS rules */
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface text-gray-900 antialiased;
+    font-family: 'Public Sans', 'Inter', system-ui, -apple-system, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Sidebar navigation */
+  .sidebar-nav-item {
+    @apply flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 rounded transition-colors;
+  }
+  .sidebar-nav-item:hover {
+    @apply text-gray-200 bg-sidebar-hover;
+  }
+  .sidebar-nav-item.active {
+    @apply text-white bg-sidebar-active border-l-2 border-ct-red;
+  }
+
+  /* Status dots */
+  .status-dot {
+    @apply inline-block w-2 h-2 rounded-full shrink-0;
+  }
+  .status-dot-active { @apply bg-emerald-500; }
+  .status-dot-approved { @apply bg-blue-500; }
+  .status-dot-draft { @apply bg-gray-400; }
+  .status-dot-expired { @apply bg-red-400; }
+
+  /* Data table */
+  .data-table {
+    @apply w-full text-sm;
+  }
+  .data-table thead th {
+    @apply text-left text-label uppercase tracking-wider text-gray-500 pb-3 font-medium;
+  }
+  .data-table tbody tr {
+    @apply border-t border-gray-100 transition-colors;
+  }
+  .data-table tbody tr:hover {
+    @apply bg-surface-low;
+  }
+  .data-table td {
+    @apply py-3 pr-4;
+  }
+
+  /* Card component */
+  .card {
+    @apply bg-white rounded-lg shadow-card;
+  }
+
+  /* KPI card */
+  .kpi-card {
+    @apply card p-5;
+  }
+  .kpi-label {
+    @apply text-label uppercase tracking-wider text-gray-500;
+  }
+  .kpi-value {
+    @apply text-2xl font-semibold text-gray-900 mt-1;
+  }
+
+  /* Button variants */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-ct-red px-4 py-2.5 text-sm font-medium text-white transition hover:bg-ct-red-dark focus:outline-none focus:ring-2 focus:ring-ct-red focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2;
+  }
+  .btn-danger-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-red-300 bg-white px-4 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-2;
+  }
+
+  /* Badge/pill variants */
+  .badge {
+    @apply inline-flex items-center rounded px-2 py-0.5 text-xs font-medium;
+  }
+  .badge-success { @apply bg-emerald-50 text-emerald-700; }
+  .badge-info { @apply bg-blue-50 text-blue-700; }
+  .badge-warning { @apply bg-amber-50 text-amber-700; }
+  .badge-danger { @apply bg-red-50 text-red-700; }
+  .badge-neutral { @apply bg-gray-100 text-gray-600; }
+
+  /* Form inputs */
+  .input {
+    @apply block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 transition focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500;
+  }
+  .input-label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+}

@@ -5,7 +5,7 @@
  * errors for 401, 403, 422, and 503 response codes.
  */
 
-import type { GenerateOfferInput, InventorySuggestion, OfferBrief } from '@/../../shared/types/offer-brief';
+import type { GenerateOfferInput, InventorySuggestion, OfferBrief } from '../../shared/types/offer-brief';
 
 // ─── Error Types ──────────────────────────────────────────────────────────────
 

@@ -3,8 +3,8 @@
 Pipeline per request:
   1. Concurrently enrich context: member profile, nearby stores, weather.
   2. Fetch up to CANDIDATE_CAP active offers from Hub.
-  3. Score each offer with ClaudeContextScoringService; stop at first score > 60.
-  4. If no offer scores > 60 → return NoMatchResponse.
+    3. Score each offer with ClaudeContextScoringService and keep the best score.
+    4. If best score is <= 60 → return NoMatchResponse.
   5. Check delivery constraints (CASL, rate-limit, dedup, quiet-hours).
   6. Dispatch outcome: activated | queued | rate_limited.
   7. Append ScoutActivationRecord to audit log (no GPS — CON-002 / AC-017).
@@ -88,9 +88,9 @@ class ScoutMatchService:
             return NoMatchResponse(message="No active offers available")
         candidates: list[OfferBrief] = offers[:_CANDIDATE_CAP]
 
-        # Score each candidate; early-exit on first match above threshold
+        # Score each candidate and keep the best match.
         best_offer: OfferBrief | None = None
-        best_result = None
+        best_result: ClaudeScoreResult | None = None
         for offer in candidates:
             result = await self._scorer.score(context, offer)
             logger.info(
@@ -102,12 +102,15 @@ class ScoutMatchService:
                     "method": result.scoring_method.value,
                 },
             )
-            if result.score > _ACTIVATION_THRESHOLD:
+            if best_result is None or result.score > best_result.score:
                 best_offer = offer
                 best_result = result
-                break
 
-        if best_offer is None or best_result is None:
+        if (
+            best_offer is None
+            or best_result is None
+            or best_result.score <= _ACTIVATION_THRESHOLD
+        ):
             return NoMatchResponse(message="No offers scored above activation threshold")
 
         return await self._dispatch_outcome(request.member_id, best_offer, best_result)
@@ -120,10 +123,13 @@ class ScoutMatchService:
     ) -> MatchResponse:
         """Apply delivery constraints and return the appropriate MatchResponse outcome."""
         now = datetime.utcnow()
+        member = self._member_store.get(member_id)
+        member_notifications_enabled = member.notifications_enabled if member else True
         allowed, reason = self._constraints.can_deliver(
             member_id=member_id,
             amount=0.0,
             now=now,
+            member_notifications_enabled=member_notifications_enabled,
         )
 
         if not allowed:

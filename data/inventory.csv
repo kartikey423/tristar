@@ -1,11 +1,21 @@
-product_id,product_name,category,store,units_in_stock,reorder_point,unit_price,urgency
-P001,North Face Winter Jacket,outerwear,Sport Chek,620,100,249.99,high
-P002,Nike Running Shoes (Men),footwear,Sport Chek,540,150,129.99,high
-P003,Carhartt Work Boots,footwear,Mark's,512,120,189.99,high
-P004,Helly Hansen Rain Jacket,outerwear,Mark's,485,80,179.99,medium
-P005,Coleman 4-Person Tent,camping,Canadian Tire,430,60,299.99,medium
-P006,Weber Genesis Grill,outdoor_cooking,Canadian Tire,395,40,899.99,medium
-P007,Yeti Rambler 20oz,drinkware,Sport Chek,380,200,44.99,medium
-P008,Lululemon Align Leggings,activewear,Sport Chek,290,100,118.00,low
-P009,Stanley Fatmax Toolset,tools,Canadian Tire,270,50,179.99,low
-P010,Ariat Work Pants,workwear,Mark's,245,80,89.99,low
+product_id,product_name,category,store,units_in_stock,reorder_point,unit_price,urgency,days_to_expiry
+P001,North Face Winter Jacket,outerwear,Sport Chek,620,100,249.99,high,-1
+P002,Duracell AA Batteries 20-Pack,electronics,Canadian Tire,580,150,18.99,high,12
+P003,Carhartt Work Boots,footwear,Mark's,512,120,189.99,high,-1
+P004,Pennzoil 5W-30 Full Synthetic 5L,automotive,Canadian Tire,540,80,44.99,high,18
+P005,Coleman 4-Person Tent,camping,Canadian Tire,430,60,299.99,medium,-1
+P006,Weber Genesis Grill (2023 Model),outdoor_cooking,Canadian Tire,395,40,899.99,medium,25
+P007,Nordic Walking Poles — Pair,fitness,Sport Chek,380,200,79.99,medium,-1
+P008,Aqua Fitness Belt & Gloves Set,aqua_fitness,Sport Chek,290,100,39.99,low,-1
+P009,Stanley FatMax Toolset 137-pc,tools,Canadian Tire,270,50,179.99,low,-1
+P010,Ariat Thermal Work Pants,workwear,Mark's,245,80,89.99,low,-1
+P011,Windshield Washer Fluid -40C 4L,automotive,Canadian Tire,610,200,5.99,high,20
+P012,Arctic Cat Snow Blower 24",snow_removal,Canadian Tire,560,30,899.99,high,15
+P013,Mastercraft Winter Car Cover,automotive,Canadian Tire,505,60,129.99,high,22
+P014,Helly Hansen Insulated Parka,outerwear,Mark's,520,80,279.99,high,-1
+P015,Comfort Step Walking Shoes — Wide,footwear,Mark's,310,100,109.99,medium,-1
+P016,Ergonomic Snow Shovel — Curved Handle,snow_removal,Canadian Tire,650,100,34.99,high,14
+P017,Sunbeam Heating Pad Extra-Large,health_wellness,Canadian Tire,420,80,49.99,medium,28
+P018,Pelican Sport Fishing Rod & Reel,fishing,Canadian Tire,380,40,89.99,medium,-1
+P019,Kirkland Signature Motor Oil 5W-30,automotive,Canadian Tire,490,100,54.99,medium,21
+P020,Mark's Insulated Bib Overalls,workwear,Mark's,530,90,149.99,high,-1

@@ -14,13 +14,22 @@ from src.backend.core.config import settings
 from src.backend.models.offer_brief import InventorySuggestion
 
 _OVERSTOCK_THRESHOLD = 500
+_NEAR_EXPIRY_DAYS = 30        # items expiring within this many days are "near expiry"
 _STALE_THRESHOLD_HOURS = 24
 
+# Objectives for overstock items
 _URGENCY_MAP = {
-    "high": ("Clear {} overstock immediately — {} units in stock"),
-    "medium": ("Promote {} to reduce excess inventory — {} units available"),
-    "low": ("Gentle push on {} to maintain healthy stock levels"),
+    "high": "Clear {} overstock immediately — {} units in stock at {} store",
+    "medium": "Promote {} to reduce excess inventory — {} units available at {}",
+    "low": "Gentle push on {} to maintain healthy stock levels at {}",
 }
+
+# Objectives for near-expiry seasonal items targeting older CTC loyalists
+_NEAR_EXPIRY_TEMPLATE = (
+    "Drive clearance of {} ({} units, {:.0f}% off recommended) at {} before season end — "
+    "target active seniors and long-tenure CTC Triangle Rewards members within 5 km of store "
+    "who purchase seasonal and home-care categories regularly"
+)
 
 
 class InventoryService:
@@ -55,26 +64,54 @@ class InventoryService:
         ]
         return sorted(overstock, key=lambda x: int(x.get("units_in_stock", 0)), reverse=True)
 
+    def get_near_expiry_items(self) -> list[dict]:
+        """Return items with days_to_expiry between 1 and _NEAR_EXPIRY_DAYS, sorted soonest first."""
+        near_expiry = []
+        for item in self._items:
+            days_raw = item.get("days_to_expiry", "-1")
+            try:
+                days = int(days_raw)
+            except (ValueError, TypeError):
+                days = -1
+            if 0 < days <= _NEAR_EXPIRY_DAYS:
+                near_expiry.append({**item, "_days_to_expiry": days})
+        return sorted(near_expiry, key=lambda x: x["_days_to_expiry"])
+
     def get_suggestions(self, limit: int = 3) -> list[InventorySuggestion]:
-        """Return top N overstock items as AI-driven offer suggestions."""
+        """Return top N suggestions prioritising near-expiry seasonal items, then overstock."""
         stale = self._is_stale()
-        overstock = self.get_overstock_items()[:limit]
+
+        # Build a ranked candidate list: near-expiry first, then overstock
+        near_expiry = self.get_near_expiry_items()
+        overstock = [
+            item for item in self.get_overstock_items()
+            if item["product_id"] not in {n["product_id"] for n in near_expiry}
+        ]
+
+        candidates = (near_expiry + overstock)[:limit]
 
         suggestions = []
-        for item in overstock:
+        for item in candidates:
             name = item["product_name"]
             units = int(item["units_in_stock"])
             urgency = item.get("urgency", "medium")
+            store = item.get("store", "Canadian Tire")
+            days = item.get("_days_to_expiry", -1)
 
-            template = _URGENCY_MAP.get(urgency, _URGENCY_MAP["medium"])
-            objective = template.format(name, units)
+            if days and days > 0:
+                # Near-expiry: craft a senior-focused clearance objective
+                discount_pct = 30.0 if urgency == "high" else 20.0 if urgency == "medium" else 10.0
+                objective = _NEAR_EXPIRY_TEMPLATE.format(name, units, discount_pct, store)
+            else:
+                template = _URGENCY_MAP.get(urgency, _URGENCY_MAP["medium"])
+                objective = template.format(name, units, store)
 
             suggestions.append(
                 InventorySuggestion(
                     product_id=item["product_id"],
                     product_name=name,
                     category=item["category"],
-                    store=item["store"],
+                    store=store,
                     units_in_stock=units,
                     urgency=urgency,
                     suggested_objective=objective,

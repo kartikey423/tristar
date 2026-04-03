@@ -56,13 +56,11 @@ export async function generateOfferAction(
 
 export async function approveOfferAction(
   offerId: string,
-  offer: OfferBrief,
 ): Promise<{ success: true; message: string } | { success: false; error: string }> {
   try {
     const response = await fetch(`${SERVER_API_BASE}/api/designer/approve/${offerId}`, {
       method: 'POST',
       headers: getServiceHeaders(),
-      body: JSON.stringify(offer),
     });
 
     if (!response.ok) {
@@ -76,6 +74,58 @@ export async function approveOfferAction(
     }
 
     return { success: true, message: 'Offer saved to Hub' };
+  } catch {
+    return { success: false, error: 'Failed to connect to TriStar API. Please try again.' };
+  }
+}
+
+export async function rejectOfferAction(
+  offerId: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    const response = await fetch(`${SERVER_API_BASE}/api/hub/offers/${offerId}`, {
+      method: 'DELETE',
+      headers: getServiceHeaders(),
+    });
+
+    if (!response.ok && response.status !== 204) {
+      const body = await response.json().catch(() => ({}));
+      const detail = (body as Record<string, unknown>)?.detail;
+      const error =
+        typeof detail === 'string' && detail.length < 200
+          ? detail
+          : 'Failed to reject offer. Please try again.';
+      return { success: false, error };
+    }
+
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Failed to connect to TriStar API. Please try again.' };
+  }
+}
+
+export async function updateConstructValueAction(
+  offerId: string,
+  value: number,
+): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    const response = await fetch(`${SERVER_API_BASE}/api/hub/offers/${offerId}/construct`, {
+      method: 'PATCH',
+      headers: getServiceHeaders(),
+      body: JSON.stringify({ value }),
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const detail = (body as Record<string, unknown>)?.detail;
+      const error =
+        typeof detail === 'string' && detail.length < 200
+          ? detail
+          : 'Failed to update discount. Please try again.';
+      return { success: false, error };
+    }
+
+    return { success: true };
   } catch {
     return { success: false, error: 'Failed to connect to TriStar API. Please try again.' };
   }

@@ -5,7 +5,7 @@
  * No auth headers required: Scout match is an unauthenticated endpoint for demo.
  */
 
-import { SERVER_API_BASE } from '@/lib/config';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 // ── Request / Response types (mirrors src/backend/models/scout_match.py) ──────
 
@@ -63,7 +63,7 @@ export interface ScoutMatchError {
  * Throws ScoutMatchError on HTTP error responses.
  */
 export async function callScoutMatch(request: MatchRequest): Promise<ScoutMatchResult> {
-  const url = `${SERVER_API_BASE}/api/scout/match`;
+  const url = `${API_BASE}/api/scout/match`;
 
   const res = await fetch(url, {
     method: 'POST',
@@ -98,7 +98,7 @@ export interface ActivationLogEntry {
 }
 
 export async function fetchActivationLog(memberId: string): Promise<ActivationLogEntry[]> {
-  const url = `${SERVER_API_BASE}/api/scout/activation-log/${encodeURIComponent(memberId)}`;
+  const url = `${API_BASE}/api/scout/activation-log/${encodeURIComponent(memberId)}`;
   const res = await fetch(url, { next: { revalidate: 0 } });
   if (!res.ok) return [];
   const data = await res.json();

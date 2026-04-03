@@ -7,7 +7,7 @@
  * next: { revalidate: 0 } ensures fresh SSR data on every request.
  */
 
-import type { OfferBrief } from '@/../../shared/types/offer-brief';
+import type { OfferBrief } from '../../shared/types/offer-brief';
 import { SERVER_API_BASE, getAuthHeaders } from '@/lib/config';
 
 export interface FetchOffersParams {

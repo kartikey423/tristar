@@ -1,12 +1,3 @@
-/**
- * RiskFlagBadge — Server Component.
- *
- * Displays active fraud risk flags with severity-appropriate styling:
- * - Critical → red background + warning icon
- * - Medium → yellow background + caution icon
- * - Low → gray background + info icon
- */
-
 import type { RiskFlags } from '../../../shared/types/offer-brief';
 
 interface RiskFlagBadgeProps {
@@ -23,21 +14,18 @@ const FLAG_LABELS: Record<FlagKey, string> = {
   offer_stacking: 'Offer stacking',
 };
 
-const SEVERITY_STYLES: Record<string, { container: string; badge: string; icon: string }> = {
+const SEVERITY_STYLES: Record<string, { container: string; badge: string }> = {
   critical: {
-    container: 'bg-red-50 border-red-200',
-    badge: 'bg-red-100 text-red-800',
-    icon: '⚠️',
+    container: 'bg-red-50 border-l-2 border-red-500',
+    badge: 'badge-danger',
   },
   medium: {
-    container: 'bg-yellow-50 border-yellow-200',
-    badge: 'bg-yellow-100 text-yellow-800',
-    icon: '⚡',
+    container: 'bg-amber-50 border-l-2 border-amber-500',
+    badge: 'badge-warning',
   },
   low: {
-    container: 'bg-gray-50 border-gray-200',
-    badge: 'bg-gray-100 text-gray-700',
-    icon: 'ℹ️',
+    container: 'bg-surface-low border-l-2 border-gray-300',
+    badge: 'badge-neutral',
   },
 };
 
@@ -50,31 +38,35 @@ export function RiskFlagBadge({ riskFlags }: RiskFlagBadgeProps) {
 
   if (activeFlags.length === 0 && riskFlags.severity === 'low') {
     return (
-      <div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2">
-        <span aria-hidden="true">✅</span>
-        <span className="text-sm text-green-700 font-medium">No risk flags — safe to approve</span>
+      <div className="flex items-center gap-2 rounded-md bg-emerald-50 border-l-2 border-emerald-500 px-3 py-2.5">
+        <span className="material-symbols-outlined text-[16px] text-emerald-600" aria-hidden="true">
+          check_circle
+        </span>
+        <span className="text-sm text-emerald-700 font-medium">No risk flags — safe to approve</span>
       </div>
     );
   }
 
   return (
     <div
-      className={`rounded-md border px-3 py-2 ${styles.container}`}
+      className={`rounded-md px-3 py-2.5 ${styles.container}`}
       role="region"
       aria-label={`Risk assessment: ${riskFlags.severity}`}
     >
       <div className="flex items-center gap-2">
-        <span aria-hidden="true">{styles.icon}</span>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${styles.badge}`}>
+        <span className="material-symbols-outlined text-[16px] text-current" aria-hidden="true">
+          {riskFlags.severity === 'critical' ? 'error' : 'warning'}
+        </span>
+        <span className={`badge ${styles.badge} uppercase text-[10px]`}>
           {riskFlags.severity} risk
         </span>
       </div>
 
       {activeFlags.length > 0 && (
-        <ul className="mt-2 space-y-1">
+        <ul className="mt-2 space-y-1 ml-6">
           {activeFlags.map((flag) => (
             <li key={flag} className="text-sm text-gray-700 flex items-center gap-1.5">
-              <span className="text-xs" aria-hidden="true">•</span>
+              <span className="w-1 h-1 rounded-full bg-gray-400" aria-hidden="true" />
               {flag}
             </li>
           ))}
@@ -82,9 +74,9 @@ export function RiskFlagBadge({ riskFlags }: RiskFlagBadgeProps) {
       )}
 
       {riskFlags.warnings.length > 0 && (
-        <ul className="mt-2 space-y-1">
+        <ul className="mt-2 space-y-1 ml-6">
           {riskFlags.warnings.map((warning) => (
-            <li key={warning} className="text-xs text-gray-600 italic">
+            <li key={warning} className="text-xs text-gray-500 italic">
               {warning}
             </li>
           ))}

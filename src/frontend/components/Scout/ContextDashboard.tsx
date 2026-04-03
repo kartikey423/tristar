@@ -21,7 +21,16 @@ import { ActivationFeed } from './ActivationFeed';
 interface StoreFixture {
   id: string;
   name: string;
-  brand: 'canadian_tire' | 'sport_chek' | 'marks' | 'petro_canada' | 'party_city';
+  brand:
+    | 'canadian_tire'
+    | 'sport_chek'
+    | 'marks'
+    | 'petro_canada'
+    | 'party_city'
+    | 'tim_hortons'
+    | 'westside'
+    | 'sports_experts'
+    | 'pro_hockey_life';
   lat: number;
   lon: number;
   category: string;
@@ -40,6 +49,12 @@ const CTC_PARTNER_STORES: StoreFixture[] = [
   { id: 'pca-003', name: 'Petro-Canada — Yonge & Finch', brand: 'petro_canada', lat: 43.7800, lon: -79.4141, category: 'fuel', branch: 'Yonge & Finch' },
   { id: 'pcy-001', name: 'Party City — North York', brand: 'party_city', lat: 43.7624, lon: -79.4147, category: 'seasonal', branch: 'North York' },
   { id: 'pcy-002', name: 'Party City — Mississauga', brand: 'party_city', lat: 43.5890, lon: -79.6440, category: 'seasonal', branch: 'Mississauga' },
+  { id: 'th-001', name: 'Tim Hortons — Front St', brand: 'tim_hortons', lat: 43.6456, lon: -79.3790, category: 'quick_meal', branch: 'Front St' },
+  { id: 'th-002', name: 'Tim Hortons — Bloor & Bathurst', brand: 'tim_hortons', lat: 43.6655, lon: -79.4111, category: 'quick_meal', branch: 'Bloor & Bathurst' },
+  { id: 'ws-001', name: 'Westside — Queen West', brand: 'westside', lat: 43.6478, lon: -79.4068, category: 'home_living', branch: 'Queen West' },
+  { id: 'ws-002', name: 'Westside — North York', brand: 'westside', lat: 43.7620, lon: -79.4131, category: 'home_living', branch: 'North York' },
+  { id: 'se-001', name: 'Sports Experts — Toronto Eaton', brand: 'sports_experts', lat: 43.6541, lon: -79.3804, category: 'sporting_goods', branch: 'Eaton' },
+  { id: 'phl-001', name: 'Pro Hockey Life — Vaughan', brand: 'pro_hockey_life', lat: 43.8372, lon: -79.5080, category: 'sporting_goods', branch: 'Vaughan' },
 ];
 
 // ── Store items ────────────────────────────────────────────────────────────────
@@ -85,6 +100,30 @@ const STORE_ITEMS: Record<StoreFixture['brand'], StoreItem[]> = {
     { name: 'Balloon Bundle (25 latex)', price: 19.99, category: 'seasonal' },
     { name: 'Halloween Costume (adult)', price: 49.99, category: 'seasonal' },
     { name: 'Party Supplies Bundle', price: 39.99, category: 'seasonal' },
+  ],
+  tim_hortons: [
+    { name: 'Double-Double + Breakfast Wrap Combo', price: 9.49, category: 'quick_meal' },
+    { name: 'French Vanilla + Bagel Combo', price: 7.49, category: 'quick_meal' },
+    { name: 'Family Timbits Pack (20)', price: 8.99, category: 'quick_meal' },
+    { name: 'Iced Capp + Sandwich Combo', price: 10.99, category: 'quick_meal' },
+  ],
+  westside: [
+    { name: 'Air Fryer 5L', price: 89.99, category: 'home_living' },
+    { name: 'Cotton Bedsheet Set (Queen)', price: 39.99, category: 'home_living' },
+    { name: 'Kitchen Storage Container Set', price: 24.99, category: 'home_living' },
+    { name: 'LED Floor Lamp', price: 59.99, category: 'home_living' },
+  ],
+  sports_experts: [
+    { name: 'Running Shoes Pro', price: 139.99, category: 'sporting_goods' },
+    { name: 'Training Tee (men)', price: 29.99, category: 'sporting_goods' },
+    { name: 'Gym Duffel Bag', price: 49.99, category: 'sporting_goods' },
+    { name: 'Smart Fitness Watch', price: 179.99, category: 'sporting_goods' },
+  ],
+  pro_hockey_life: [
+    { name: 'Composite Hockey Stick Elite', price: 179.99, category: 'sporting_goods' },
+    { name: 'Hockey Gloves Pro', price: 99.99, category: 'sporting_goods' },
+    { name: 'Skates Performance', price: 249.99, category: 'sporting_goods' },
+    { name: 'Stick Tape Bundle', price: 12.99, category: 'sporting_goods' },
   ],
 };
 
@@ -146,6 +185,42 @@ const STORE_INVENTORY: Record<string, StoreItem[]> = {
     { name: 'Balloon Bundle (25 latex)', price: 17.99, category: 'seasonal' },
     { name: 'Birthday Party Pack (30-pc)', price: 27.99, category: 'seasonal' },
     { name: 'Pinata (assorted)', price: 24.99, category: 'seasonal' },
+  ],
+  'th-001': [ // Tim Hortons — Front St
+    { name: 'Double-Double + Breakfast Wrap Combo', price: 9.49, category: 'quick_meal' },
+    { name: 'Family Timbits Pack (20)', price: 8.99, category: 'quick_meal' },
+    { name: 'Iced Capp + Sandwich Combo', price: 10.99, category: 'quick_meal' },
+    { name: 'Farmer\'s Breakfast Sandwich', price: 6.49, category: 'quick_meal' },
+  ],
+  'th-002': [ // Tim Hortons — Bloor & Bathurst
+    { name: 'French Vanilla + Bagel Combo', price: 7.49, category: 'quick_meal' },
+    { name: 'Steeped Tea + Donut Combo', price: 5.99, category: 'quick_meal' },
+    { name: 'Chicken Wrap Combo', price: 11.49, category: 'quick_meal' },
+    { name: 'Cold Brew + Muffin Combo', price: 7.99, category: 'quick_meal' },
+  ],
+  'ws-001': [ // Westside — Queen West
+    { name: 'Air Fryer 5L', price: 89.99, category: 'home_living' },
+    { name: 'Cotton Bedsheet Set (Queen)', price: 39.99, category: 'home_living' },
+    { name: 'Kitchen Storage Container Set', price: 24.99, category: 'home_living' },
+    { name: 'Aroma Diffuser', price: 34.99, category: 'home_living' },
+  ],
+  'ws-002': [ // Westside — North York
+    { name: 'LED Floor Lamp', price: 59.99, category: 'home_living' },
+    { name: 'Bathroom Organizer Rack', price: 29.99, category: 'home_living' },
+    { name: 'Dinnerware Set (16-pc)', price: 74.99, category: 'home_living' },
+    { name: 'Throw Blanket', price: 22.99, category: 'home_living' },
+  ],
+  'se-001': [ // Sports Experts — Toronto Eaton
+    { name: 'Running Shoes Pro', price: 139.99, category: 'sporting_goods' },
+    { name: 'Gym Duffel Bag', price: 49.99, category: 'sporting_goods' },
+    { name: 'Smart Fitness Watch', price: 179.99, category: 'sporting_goods' },
+    { name: 'Yoga Block Set', price: 24.99, category: 'sporting_goods' },
+  ],
+  'phl-001': [ // Pro Hockey Life — Vaughan
+    { name: 'Composite Hockey Stick Elite', price: 179.99, category: 'sporting_goods' },
+    { name: 'Hockey Gloves Pro', price: 99.99, category: 'sporting_goods' },
+    { name: 'Skates Performance', price: 249.99, category: 'sporting_goods' },
+    { name: 'Shoulder Pads Senior', price: 149.99, category: 'sporting_goods' },
   ],
 };
 
@@ -284,6 +359,8 @@ const CATEGORY_COMPLEMENTS: Record<string, string[]> = {
   apparel: ['sporting_goods', 'outdoor'],
   seasonal: ['hardware', 'apparel'],
   fuel: ['automotive'],
+  quick_meal: ['fuel', 'automotive', 'home_living'],
+  home_living: ['seasonal', 'hardware', 'quick_meal'],
 };
 
 const ITEM_COMPLEMENTS: Array<{ keyword: string; relatedKeywords: string[] }> = [
@@ -294,6 +371,8 @@ const ITEM_COMPLEMENTS: Array<{ keyword: string; relatedKeywords: string[] }> = 
   { keyword: 'hockey stick', relatedKeywords: ['helmet', 'gloves', 'shoes'] },
   { keyword: 'snow shovel', relatedKeywords: ['blower', 'boots', 'heater'] },
   { keyword: 'birthday', relatedKeywords: ['balloon', 'supplies', 'pinata'] },
+  { keyword: 'double-double', relatedKeywords: ['breakfast', 'bagel', 'sandwich'] },
+  { keyword: 'air fryer', relatedKeywords: ['storage', 'dinnerware', 'organizer'] },
 ];
 
 // ── Petro-Canada stations ──────────────────────────────────────────────────────
@@ -588,10 +667,8 @@ function generatePersonalizedMessage(
   memberFirstName: string,
   itemName: string,
   occasion: string | null,
-  clearanceItem: string | null,
-  clearanceStoreName: string | null,
-  clearanceDistanceKm: number | null,
-  clearanceDiscountPct: number | null,
+  nextItemName: string | null,
+  nextItemDiscountPct: number | null,
 ): string {
   const greeting = occasion
     ? (() => {
@@ -614,9 +691,8 @@ function generatePersonalizedMessage(
 
   const purchaseContext = `Since you picked up a ${itemName}`;
 
-  if (clearanceItem && clearanceStoreName && clearanceDistanceKm != null && clearanceDiscountPct != null) {
-    const distStr = clearanceDistanceKm.toFixed(1);
-    return `${greeting} ${purchaseContext}, you might love our ${clearanceItem} at ${clearanceDiscountPct}% off at ${clearanceStoreName}, just ${distStr} km from you.`;
+  if (nextItemName && nextItemDiscountPct != null) {
+    return `${greeting} ${purchaseContext}, your next best offer is ${nextItemName} at ${nextItemDiscountPct}% off.`;
   }
 
   return `${greeting} ${purchaseContext}, check out exclusive Triangle deals nearby.`;
@@ -959,7 +1035,6 @@ function PushNotificationCard({
     category: itemCategory,
   };
   const nextBestItem = predictNextBestItem(memberId, storeItems, purchasedItem);
-  const clearance = getRelevantClearanceItem(memberId, storeLat, storeLon, itemCategory);
   const petro = nearestPetro(storeLat, storeLon);
   const hasMatch = isMatchResponse(result);
   const totalRewardsValue = totalRewardsPoints * 0.01;
@@ -976,10 +1051,8 @@ function PushNotificationCard({
     memberFirstName,
     itemName,
     occasion,
-    clearance?.name ?? null,
-    clearance?.storeName ?? null,
-    clearance?.distanceKm ?? null,
-    clearance?.discountPct ?? null,
+    nextBestItem?.item.name ?? null,
+    nextBestItem?.predictedDiscountPct ?? null,
   );
 
   return (
@@ -1017,115 +1090,100 @@ function PushNotificationCard({
         </div>
       </div>
 
-      {/* Scout match result */}
+      {/* ── Smart Recommendation — combines personalized offer + AI next-item ── */}
       {hasMatch && (
-        <div className="px-4 py-3 border-b border-gray-100">
+        <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-br from-emerald-50/60 to-white">
+          {/* Header */}
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Personalized offer for you
-            </p>
-            <span
-              className={`badge capitalize ${OUTCOME_STYLES[result.outcome] ?? 'badge-neutral'}`}
-            >
-              {result.outcome.replace('_', ' ')}
-            </span>
-          </div>
-          <p className="text-sm text-gray-800 leading-snug">{personalizedMsg}</p>
-          <p className="text-xs text-gray-500 mt-1.5 italic">{result.notification_text}</p>
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-gray-400">
-              AI confidence:&nbsp;
-              <span
-                className={
-                  result.score > 80
-                    ? 'font-semibold text-green-700'
-                    : result.score > 60
-                      ? 'font-semibold text-yellow-700'
-                      : 'font-semibold text-red-700'
-                }
-              >
-                {result.score.toFixed(0)}/100
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[16px] text-emerald-600" aria-hidden="true">smart_toy</span>
+              <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Smart Recommendation for You</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-400">
+                AI confidence&nbsp;
+                <span className={result.score > 80 ? 'font-semibold text-green-700' : result.score > 60 ? 'font-semibold text-yellow-700' : 'font-semibold text-red-600'}>
+                  {result.score.toFixed(0)}/100
+                </span>
               </span>
-            </span>
+              <span className={`badge capitalize ${OUTCOME_STYLES[result.outcome] ?? 'badge-neutral'}`}>
+                {result.outcome.replace('_', ' ')}
+              </span>
+            </div>
           </div>
+
+          {/* Personalized message */}
+          <p className="text-sm text-gray-800 leading-snug font-medium">{personalizedMsg}</p>
+          {result.notification_text && (
+            <p className="text-xs text-gray-500 mt-1 italic leading-snug">{result.notification_text}</p>
+          )}
+
+          {/* Status notices */}
           {result.outcome === 'queued' && result.delivery_time && (
-            <p className="text-xs text-yellow-700 mt-1">
-              Delivery scheduled for {result.delivery_time} UTC
-            </p>
+            <div className="mt-2 flex items-center gap-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
+              <span className="material-symbols-outlined text-[13px]" aria-hidden="true">schedule</span>
+              Scheduled for delivery at {result.delivery_time} (outside notification hours)
+            </div>
           )}
           {result.outcome === 'rate_limited' && result.retry_after_seconds != null && (
-            <p className="text-xs text-red-700 mt-1">
-              Rate limit — retry in {Math.ceil(result.retry_after_seconds / 60)} min
-            </p>
+            <div className="mt-2 flex items-center gap-1 rounded bg-orange-50 px-2 py-1 text-xs text-orange-700">
+              <span className="material-symbols-outlined text-[13px]" aria-hidden="true">info</span>
+              {result.retry_after_seconds < 120
+                ? 'A notification was sent very recently — will refresh momentarily'
+                : `Notification already sent recently — next available in ${Math.ceil(result.retry_after_seconds / 60)} min`}
+            </div>
+          )}
+
+          {/* AI next-item prediction with pricing breakdown */}
+          {nextBestItem && discountedNextItemPrice != null && redeemValue != null && amountAfterRewards != null && (
+            <div className="mt-3 border-t border-emerald-100 pt-3">
+              <div className="mb-2 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[14px] text-emerald-600" aria-hidden="true">psychology</span>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">You might also need…</p>
+                <span className="rounded-full border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                  {nextBestItem.confidence}/100 match · {nextBestItem.predictedDiscountPct}% off
+                </span>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">{nextBestItem.item.name}</p>
+                  <p className="mt-0.5 text-xs leading-snug text-gray-600">{nextBestItem.reason}</p>
+                  <div className="mt-1.5 flex items-center gap-1 text-xs text-emerald-700">
+                    <span className="material-symbols-outlined text-[12px]" aria-hidden="true">stars</span>
+                    {currentRewardsPoints.toLocaleString()} + {pointsEarned.toLocaleString()} pts = {totalRewardsPoints.toLocaleString()} pts total
+                  </div>
+                </div>
+                {/* Offer pricing breakdown */}
+                <div className="min-w-[136px] shrink-0 space-y-0.5 rounded-lg border border-emerald-100 bg-white px-3 py-2 text-right shadow-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-[11px] text-gray-400">Original</span>
+                    <span className="text-[11px] text-gray-400 line-through">${nextBestItem.item.price.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-[11px] text-gray-600">Offer price</span>
+                    <span className="text-[11px] font-semibold text-gray-800">${discountedNextItemPrice.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-[11px] text-green-600">Rewards used</span>
+                    <span className="text-[11px] font-medium text-green-600">-${redeemValue.toFixed(2)}</span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-4 border-t border-emerald-100 pt-1">
+                    <span className="text-xs font-bold text-emerald-800">You pay</span>
+                    <span className="text-sm font-bold text-emerald-800">${amountAfterRewards.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}
 
       {!hasMatch && (
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-          <p className="text-sm text-gray-500 italic">{result.message}</p>
-        </div>
-      )}
-
-      {nextBestItem && discountedNextItemPrice != null && redeemValue != null && amountAfterRewards != null && (
-        <div className="px-4 py-3 border-b border-gray-100 bg-emerald-50/35">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            AI next-item prediction
-          </p>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900">{nextBestItem.item.name}</p>
-              <p className="text-xs text-gray-600 mt-0.5">{nextBestItem.reason}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Confidence {nextBestItem.confidence}/100 · predicted offer {nextBestItem.predictedDiscountPct}% off
-              </p>
-              <p className="text-xs text-green-700 mt-1">
-                Current points {currentRewardsPoints.toLocaleString()} + earned {pointsEarned.toLocaleString()} ={' '}
-                {totalRewardsPoints.toLocaleString()} pts
-              </p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-xs text-gray-400 line-through">${nextBestItem.item.price.toFixed(2)}</p>
-              <p className="text-sm text-gray-700">
-                Offer price <span className="font-semibold">${discountedNextItemPrice.toFixed(2)}</span>
-              </p>
-              <p className="text-xs text-green-700">
-                Rewards used: -${redeemValue.toFixed(2)}
-              </p>
-              <p className="text-sm font-bold text-green-800 mt-1">
-                You pay: ${amountAfterRewards.toFixed(2)}
-              </p>
-            </div>
+        <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-[15px] text-gray-400" aria-hidden="true">info</span>
+            <p className="text-sm italic text-gray-500">{result.message}</p>
           </div>
-        </div>
-      )}
-
-      {/* Personalised nearby clearance recommendation */}
-      {clearance && (
-        <div className="px-4 py-3 border-b border-gray-100">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Recommended for you
-          </p>
-          <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0 pr-3">
-              <p className="text-sm font-medium text-gray-900">{clearance.name}</p>
-              <p className="text-xs text-gray-500 mt-0.5 truncate">{clearance.storeName}</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {clearance.distanceKm.toFixed(1)} km away · {clearance.unitsLeft} units ·{' '}
-                {clearance.daysLeft} days left
-              </p>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <p className="text-xs text-gray-400 line-through">${clearance.originalPrice.toFixed(2)}</p>
-              <p className="text-sm font-bold text-red-600">${clearance.clearancePrice.toFixed(2)}</p>
-              <span className="inline-block rounded bg-red-100 px-1.5 py-0.5 text-xs font-semibold text-red-700">
-                {clearance.discountPct}% off
-              </span>
-            </div>
-          </div>
-          <p className="text-xs text-blue-700 mt-1.5 font-medium">
-            Save ${(clearance.marketplacePrice - clearance.clearancePrice).toFixed(2)} vs. online price · Pay with your Triangle Points
-          </p>
         </div>
       )}
 

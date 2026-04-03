@@ -86,17 +86,13 @@ export function OfferList({ offers }: OfferListProps) {
                   </td>
                   <td className="pr-4 align-top">
                     {offer.status === 'expired' ? (
-                      <div className="text-right text-xs text-gray-400">No actions</div>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-400">
+                        <span className="material-symbols-outlined text-[13px]" aria-hidden="true">check_circle</span>
+                        Closed
+                      </span>
                     ) : (
                       <div className="flex justify-end">
-                        <details className="relative">
-                          <summary className="list-none cursor-pointer rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-500 hover:bg-gray-50">
-                            :::
-                          </summary>
-                          <div className="absolute right-0 z-10 mt-2 w-52 rounded-md border border-gray-200 bg-white p-3 shadow-lg">
-                            <StatusActionButtons offerId={offer.offer_id} status={offer.status} />
-                          </div>
-                        </details>
+                        <StatusActionButtons offerId={offer.offer_id} status={offer.status} />
                       </div>
                     )}
                   </td>

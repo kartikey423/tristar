@@ -5,11 +5,11 @@ import { OfferList } from '../../components/Hub/OfferList';
 import { fetchOffers } from '../../services/hub-api';
 
 interface HubPageProps {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; trigger?: string }>;
 }
 
 export default async function HubPage({ searchParams }: HubPageProps) {
-  const { status, q } = await searchParams;
+  const { status, q, trigger } = await searchParams;
 
   let offers: Awaited<ReturnType<typeof fetchOffers>>['offers'] = [];
   let errorMessage: string | null = null;
@@ -25,9 +25,12 @@ export default async function HubPage({ searchParams }: HubPageProps) {
   }
 
   const searchQuery = q?.trim() ?? '';
-  const filteredOffers = searchQuery
-    ? offers.filter((o) => o.objective.toLowerCase().includes(searchQuery.toLowerCase()))
-    : offers;
+  const triggerFilter = trigger?.trim() ?? '';
+  const filteredOffers = offers.filter((o) => {
+    const matchesSearch = !searchQuery || o.objective.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesTrigger = !triggerFilter || o.trigger_type === triggerFilter;
+    return matchesSearch && matchesTrigger;
+  });
 
   const statusFilter = status as OfferStatus | undefined;
   const activeCount = offers.filter((o) => o.status === 'active').length;
@@ -87,22 +90,35 @@ export default async function HubPage({ searchParams }: HubPageProps) {
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <StatusFilterNav currentStatus={statusFilter} searchQuery={searchQuery} counts={{ active: activeCount, approved: approvedCount, draft: draftCount, expired: expiredCount, total: offers.length }} />
 
-        <form action="/hub" method="GET" className="w-full lg:max-w-md">
+        <form action="/hub" method="GET" className="w-full lg:max-w-lg">
           {status && <input type="hidden" name="status" value={status} />}
-          <div className="relative">
-            <input
-              type="text"
-              name="q"
-              defaultValue={searchQuery}
-              placeholder="Search offers by objective..."
-              aria-label="Search offers"
-              className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <span className="material-symbols-outlined pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[16px] text-gray-400" aria-hidden="true">search</span>
+              <input
+                type="text"
+                name="q"
+                defaultValue={searchQuery}
+                placeholder="Search by objective…"
+                aria-label="Search offers"
+                className="w-full rounded-md border border-gray-200 bg-white py-2 pl-8 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+              />
+            </div>
+            <select
+              name="trigger"
+              defaultValue=""
+              aria-label="Filter by trigger type"
+              className="rounded-md border border-gray-200 bg-white px-2 py-2 text-xs text-gray-600 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+            >
+              <option value="">All triggers</option>
+              <option value="marketer_initiated">Marketer</option>
+              <option value="purchase_triggered">Purchase</option>
+            </select>
             <button
               type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700"
+              className="rounded-md bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-700 transition"
             >
-              Search
+              Filter
             </button>
           </div>
         </form>

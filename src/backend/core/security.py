@@ -76,3 +76,21 @@ async def require_system_role(
             detail=f"Role 'system' required for this endpoint; caller has role '{user.role}'",
         )
     return user
+
+
+async def require_marketing_or_system_role(
+    user: AuthUser = Depends(get_current_user),
+) -> AuthUser:
+    """Enforce that the caller has role='marketing' or role='system'.
+
+    Used for Hub write endpoints that are legitimately called by both marketers
+    (via the frontend) and internal services (via service-to-service JWT).
+    """
+    if user.role not in ("marketing", "system"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Role 'marketing' or 'system' required; caller has role '{user.role}'"
+            ),
+        )
+    return user
