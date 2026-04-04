@@ -2,7 +2,7 @@
 
 import { useFormStatus } from 'react-dom';
 import { useState } from 'react';
-import { generateOfferAction } from '../../app/designer/actions';
+import { generateOfferAction, updateConstructValueAction } from '../../app/designer/actions';
 import { GenerateOfferInputSchema } from '../../../shared/types/offer-brief';
 import type { OfferBrief } from '../../../shared/types/offer-brief';
 import { OfferBriefCard } from './OfferBriefCard';
@@ -67,7 +67,17 @@ export function ManualEntryForm({ initialObjective, aiSuggestedConstructValue }:
 
     const result = await generateOfferAction(formData);
     if (result.success) {
-      setGeneratedOffer(result.offer);
+      let finalOffer = result.offer;
+      // If marketer manually overrode the discount, apply it now and persist to Hub
+      const parsedValue = constructValue ? parseFloat(constructValue) : NaN;
+      if (overriddenFields.has('construct_value') && !isNaN(parsedValue)) {
+        await updateConstructValueAction(finalOffer.offer_id, parsedValue);
+        finalOffer = {
+          ...finalOffer,
+          construct: { ...finalOffer.construct, value: parsedValue },
+        };
+      }
+      setGeneratedOffer(finalOffer);
     } else {
       setError(result.error);
     }

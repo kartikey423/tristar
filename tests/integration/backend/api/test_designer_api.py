@@ -125,6 +125,7 @@ class TestGenerateEndpoint:
         self, client, mock_claude_service
     ):
         from src.backend.models.offer_brief import FraudCheckResult, RiskFlags
+        from src.backend.services.fraud_check_service import FraudCheckService
 
         critical_result = FraudCheckResult(
             severity=RiskSeverity.critical,
@@ -140,23 +141,19 @@ class TestGenerateEndpoint:
             blocked=True,
         )
 
-        with patch("src.backend.api.designer.get_fraud_service") as mock_factory:
-            mock_service = MagicMock()
-            mock_service.validate = MagicMock(return_value=critical_result)
-            mock_factory.return_value = mock_service
-
-            with patch("src.backend.api.designer.get_audit_service"):
-                with patch(
-                    "src.backend.core.security._decode_token",
-                    return_value={"sub": "user-1", "role": "marketing"},
-                ):
-                    response = await client.post(
-                        "/api/designer/generate",
-                        json={
-                            "objective": "Massive 40% discount to clear all remaining winter inventory"
-                        },
-                        headers={"Authorization": "Bearer test-token"},
-                    )
+        # Patch the method on the class — works regardless of lru_cache on the factory
+        with patch.object(FraudCheckService, "validate", return_value=critical_result):
+            with patch(
+                "src.backend.core.security._decode_token",
+                return_value={"sub": "user-1", "role": "marketing"},
+            ):
+                response = await client.post(
+                    "/api/designer/generate",
+                    json={
+                        "objective": "Massive 40% discount to clear all remaining winter inventory"
+                    },
+                    headers={"Authorization": "Bearer test-token"},
+                )
 
         assert response.status_code == 422
         data = response.json()

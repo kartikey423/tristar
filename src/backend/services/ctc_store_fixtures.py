@@ -29,6 +29,11 @@ _CTC_STORES: list[_StoreFixture] = [
     _StoreFixture("ctc-006", "Marks King St W", 43.6450, -79.4012, "apparel"),
     _StoreFixture("ctc-007", "Canadian Tire Scarborough", 43.7731, -79.2576, "general"),
     _StoreFixture("ctc-008", "Sport Chek Square One", 43.5935, -79.6393, "sporting_goods"),
+    # ─── Hill Station Partner Store Fixtures (for location-zone demo scenarios) ──
+    # These represent partner store coordinates used to classify purchases in
+    # mountain/resort zones and trigger Canadian Tire outdoor/camping cross-sells.
+    _StoreFixture("ctc-p01", "Tim Hortons - Blue Mountain", 44.50, -80.31, "outdoor_camping"),
+    _StoreFixture("ctc-p02", "Tim Hortons - Whistler Village", 50.11, -122.95, "outdoor_camping"),
 ]
 
 

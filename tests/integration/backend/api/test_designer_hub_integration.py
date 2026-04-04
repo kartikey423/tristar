@@ -51,8 +51,9 @@ def mock_claude_safe():
 
 @pytest.fixture
 def mock_fraud_safe():
-    """Mock fraud service returning safe result."""
+    """Mock fraud service returning safe result — patches via class method to bypass lru_cache."""
     from src.backend.models.offer_brief import FraudCheckResult, RiskFlags
+    from src.backend.services.fraud_check_service import FraudCheckService
 
     safe = FraudCheckResult(
         severity=RiskSeverity.low,
@@ -68,12 +69,8 @@ def mock_fraud_safe():
         blocked=False,
     )
 
-    with patch("src.backend.api.designer.get_fraud_service") as mock_factory:
-        mock_service = MagicMock()
-        mock_service.validate = MagicMock(return_value=safe)
-        mock_service.record_active_offer = MagicMock()
-        mock_factory.return_value = mock_service
-        yield mock_service
+    with patch.object(FraudCheckService, "validate", return_value=safe):
+        yield
 
 
 @pytest.mark.integration
@@ -107,8 +104,9 @@ class TestDesignerHubIntegration:
     async def test_generate_fraud_blocked_not_saved_to_hub(self, client, mock_claude_safe):
         """AC-019: When fraud is critical, offer must NOT be saved to Hub."""
         from src.backend.models.offer_brief import FraudCheckResult, RiskFlags
+        from src.backend.services.fraud_check_service import FraudCheckService
 
-        mock_service, valid_offer = mock_claude_safe
+        _mock_service, _valid_offer = mock_claude_safe
         critical = FraudCheckResult(
             severity=RiskSeverity.critical,
             flags=RiskFlags(
@@ -123,11 +121,8 @@ class TestDesignerHubIntegration:
             blocked=True,
         )
 
-        with patch("src.backend.api.designer.get_fraud_service") as mock_factory:
-            mock_service = MagicMock()
-            mock_service.validate = MagicMock(return_value=critical)
-            mock_factory.return_value = mock_service
-
+        # Patch method directly on class — works regardless of lru_cache on the factory
+        with patch.object(FraudCheckService, "validate", return_value=critical):
             with patch("src.backend.api.designer.get_audit_service"):
                 with MARKETING_TOKEN_PATCH:
                     response = await client.post(

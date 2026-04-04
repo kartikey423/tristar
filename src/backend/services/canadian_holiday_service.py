@@ -29,9 +29,11 @@ _CANADIAN_HOLIDAYS_2026: set[date] = {
     date(2026, 1, 1),
     # Family Day (3rd Monday of February — ON, AB, SK, BC, NB)
     date(2026, 2, 16),
-    # Good Friday
+    # Good Friday — April 3, 2026
+    # Long weekend window: Apr 3 (Fri, holiday) → Apr 4 (Sat) → Apr 5 (Sun) → Apr 6 (Mon, holiday)
+    # All four days classify as long_weekend via _is_long_weekend() adjacency logic.
     date(2026, 4, 3),
-    # Easter Monday (Quebec)
+    # Easter Monday (Quebec statutory) — Apr 6 anchors the Apr 3–6 long weekend window
     date(2026, 4, 6),
     # Victoria Day (Monday before May 25)
     date(2026, 5, 18),

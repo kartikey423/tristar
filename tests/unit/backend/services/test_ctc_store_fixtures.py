@@ -58,6 +58,7 @@ class TestGetNearby:
         for store in stores:
             assert round(store.distance_km, 3) == store.distance_km
 
-    def test_all_stores_returns_8(self):
+    def test_all_stores_returns_10(self):
+        # 8 original CTC stores + 2 hill station partner fixtures (Blue Mountain, Whistler)
         stores = CTCStoreFixtures.all_stores()
-        assert len(stores) == 8
+        assert len(stores) == 10

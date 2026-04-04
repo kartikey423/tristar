@@ -285,8 +285,25 @@ async def get_inventory_suggestions(
     limit: int = 3,
     user: AuthUser = Depends(require_marketing_role),
     inventory: InventoryService = Depends(get_inventory_service),
+    hub_store: HubStore = Depends(get_hub_store),
 ) -> list[InventorySuggestion]:
-    return inventory.get_suggestions(limit=min(limit, 10))
+    suggestions = inventory.get_suggestions(limit=min(limit, 10))
+
+    # Exclude products already in Hub (any non-expired status) — prevents duplicates in Designer feed
+    try:
+        hub_offers = await hub_store.list()
+        offered_deal_ids: set[str] = {
+            o.source_deal_id for o in hub_offers
+            if o.source_deal_id is not None
+            and o.status in {OfferStatus.draft, OfferStatus.approved, OfferStatus.active}
+        }
+        if offered_deal_ids:
+            suggestions = [s for s in suggestions if s.product_id not in offered_deal_ids]
+    except Exception:
+        # Hub exclusion is best-effort — never fail the suggestions endpoint
+        pass
+
+    return suggestions
 
 
 @router.get(
@@ -321,14 +338,14 @@ async def get_live_deals(
     try:
         deals = await deal_scraper.fetch_deals()
         if deals:
-            return deals[:min(limit, 10)]
+            return deals[:min(limit, 20)]
 
         # Scraper returned empty (Canadian Tire blocked or no deals found) — return demo deals
         logger.warning("Live scraper returned 0 deals, serving demo fallback data")
-        return _demo_deals()[:min(limit, 10)]
+        return _demo_deals()[:min(limit, 20)]
     except Exception as e:
         logger.error(f"Failed to fetch live deals: {e}")
-        return _demo_deals()[:min(limit, 10)]
+        return _demo_deals()[:min(limit, 20)]
 
 
 def _demo_deals() -> list[DealSuggestion]:
