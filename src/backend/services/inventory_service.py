@@ -34,7 +34,13 @@ _NEAR_EXPIRY_TEMPLATE = (
 
 class InventoryService:
     def __init__(self, file_path: Optional[str] = None) -> None:
-        self._file_path = Path(file_path or settings.INVENTORY_FILE_PATH)
+        raw = Path(file_path or settings.INVENTORY_FILE_PATH)
+        # Resolve relative paths against the project root so the service works
+        # regardless of which directory uvicorn is launched from.
+        if not raw.is_absolute():
+            project_root = Path(__file__).parent.parent.parent.parent
+            raw = project_root / raw
+        self._file_path = raw
         self._items: list[dict] = []
         self._loaded_at: Optional[datetime] = None
         self._load()
