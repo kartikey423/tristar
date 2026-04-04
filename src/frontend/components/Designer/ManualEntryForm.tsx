@@ -71,7 +71,11 @@ export function ManualEntryForm({ initialObjective, aiSuggestedConstructValue }:
       // If marketer manually overrode the discount, apply it now and persist to Hub
       const parsedValue = constructValue ? parseFloat(constructValue) : NaN;
       if (overriddenFields.has('construct_value') && !isNaN(parsedValue)) {
-        await updateConstructValueAction(finalOffer.offer_id, parsedValue);
+        try {
+          await updateConstructValueAction(finalOffer.offer_id, parsedValue);
+        } catch {
+          // Best-effort — if PATCH fails, still show offer with local override applied
+        }
         finalOffer = {
           ...finalOffer,
           construct: { ...finalOffer.construct, value: parsedValue },

@@ -86,6 +86,54 @@ export async function callScoutMatch(request: MatchRequest): Promise<ScoutMatchR
   return (await res.json()) as ScoutMatchResult;
 }
 
+// ── Partner trigger ────────────────────────────────────────────────────────────
+
+export interface PartnerPurchaseEvent {
+  event_id: string;
+  partner_id: string;
+  partner_name: string;
+  purchase_amount: number;
+  purchase_category: string;
+  member_id: string;
+  timestamp: string;
+  location?: GeoPoint;
+  store_name?: string;
+}
+
+export interface PartnerTriggerApiResponse {
+  status: string;
+  message: string;
+  event_id: string;
+}
+
+/**
+ * POST /api/scout/partner-trigger — send a partner purchase event.
+ * Returns 202 immediately; offer generation happens in background.
+ */
+export async function callPartnerTrigger(
+  event: PartnerPurchaseEvent,
+): Promise<PartnerTriggerApiResponse> {
+  const url = `${API_BASE}/api/scout/partner-trigger`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(event),
+  });
+
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const body = await res.json();
+      detail = body?.detail ?? detail;
+    } catch {
+      // ignore parse error
+    }
+    throw { status: res.status, detail } as ScoutMatchError;
+  }
+
+  return res.json() as Promise<PartnerTriggerApiResponse>;
+}
+
 // ── Activation log entry (from GET /api/scout/activation-log) ─────────────────
 
 export interface ActivationLogEntry {

@@ -6,7 +6,7 @@ import { SERVER_API_BASE } from '../../lib/config';
 
 async function fetchInventorySuggestions(): Promise<InventorySuggestion[]> {
   try {
-    const response = await fetch(`${SERVER_API_BASE}/api/designer/suggestions?limit=6`, {
+    const response = await fetch(`${SERVER_API_BASE}/api/designer/suggestions?limit=20`, {
       headers: {
         Authorization: `Bearer ${process.env.MARKETER_JWT ?? ''}`,
       },

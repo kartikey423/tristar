@@ -21,7 +21,7 @@ export function AISuggestionsPanel({ suggestions: initialSuggestions }: AISugges
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const fresh = await getInventorySuggestions(); // No limit — return all clearance items
+      const fresh = await getInventorySuggestions(20);
       setSuggestions(fresh);
       setSecondsAgo(0);
     } catch {

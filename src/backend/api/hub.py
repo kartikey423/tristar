@@ -21,10 +21,11 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from src.backend.api.deps import get_hub_audit_service, get_hub_store
+from src.backend.core.config import settings
 from src.backend.core.security import AuthUser, get_current_user, require_marketing_or_system_role, require_system_role
 from src.backend.models.offer_brief import AUTO_ACTIVE_TRIGGER_TYPES, OfferBrief, OfferStatus, TriggerType
 from src.backend.services.hub_audit_service import HubAuditEvent, HubAuditService
-from src.backend.services.hub_store import HubStore, OfferAlreadyExistsError, RedisUnavailableError
+from src.backend.services.hub_store import HubStore, InMemoryHubStore, OfferAlreadyExistsError, RedisUnavailableError
 
 router = APIRouter()
 
@@ -364,3 +365,27 @@ async def reject_offer(
             )
         )
     )
+
+
+@router.delete(
+    "/admin/reset",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="[DEV ONLY] Clear all offers from the Hub store",
+    description="Clears the in-memory Hub store. Only available in development environment. Use to purge duplicate offers during demo.",
+)
+async def reset_hub_store(
+    hub_store: HubStore = Depends(get_hub_store),
+) -> None:
+    if settings.ENVIRONMENT != "development":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hub reset is only available in development environment",
+        )
+    if isinstance(hub_store, InMemoryHubStore):
+        hub_store.clear()
+        logger.info("hub_store_reset: all offers cleared (dev mode)")
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Hub reset is only supported for InMemoryHubStore",
+        )

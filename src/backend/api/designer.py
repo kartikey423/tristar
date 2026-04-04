@@ -287,7 +287,7 @@ async def get_inventory_suggestions(
     inventory: InventoryService = Depends(get_inventory_service),
     hub_store: HubStore = Depends(get_hub_store),
 ) -> list[InventorySuggestion]:
-    suggestions = inventory.get_suggestions(limit=min(limit, 10))
+    suggestions = inventory.get_suggestions(limit=min(limit, 50))
 
     # Exclude products already in Hub (any non-expired status) — prevents duplicates in Designer feed
     try:

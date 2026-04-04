@@ -39,11 +39,20 @@ export async function generateOfferAction(
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       const detail = (body as Record<string, unknown>)?.detail;
-      // Return only known safe string messages; reject complex error objects
-      const error =
-        typeof detail === 'string' && detail.length < 200
-          ? detail
-          : 'Offer generation failed. Please try again.';
+      let error: string;
+      if (typeof detail === 'string' && detail.length < 200) {
+        error = detail;
+      } else if (
+        typeof detail === 'object' &&
+        detail !== null &&
+        (detail as Record<string, unknown>).error === 'FraudBlocked'
+      ) {
+        const d = detail as Record<string, unknown>;
+        const warnings = ((d.warnings as string[]) ?? []).slice(0, 2).join('; ');
+        error = `Offer blocked by fraud check (${d.severity} risk)${warnings ? ': ' + warnings : ''}`;
+      } else {
+        error = 'Offer generation failed. Please try again.';
+      }
       return { success: false, error };
     }
 

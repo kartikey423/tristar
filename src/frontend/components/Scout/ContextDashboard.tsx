@@ -12,8 +12,8 @@
  */
 
 import { useState } from 'react';
-import type { MatchRequest, ScoutMatchResult, ScoutMatchError } from '@/lib/scout-api';
-import { callScoutMatch, isMatchResponse } from '@/lib/scout-api';
+import type { MatchRequest, ScoutMatchResult, ScoutMatchError, PartnerPurchaseEvent, PartnerTriggerApiResponse } from '@/lib/scout-api';
+import { callScoutMatch, callPartnerTrigger, isMatchResponse } from '@/lib/scout-api';
 import { ActivationFeed } from './ActivationFeed';
 
 // ── Store fixtures ─────────────────────────────────────────────────────────────
@@ -51,6 +51,8 @@ const CTC_PARTNER_STORES: StoreFixture[] = [
   { id: 'pcy-002', name: 'Party City — Mississauga', brand: 'party_city', lat: 43.5890, lon: -79.6440, category: 'seasonal', branch: 'Mississauga' },
   { id: 'th-001', name: 'Tim Hortons — Front St', brand: 'tim_hortons', lat: 43.6456, lon: -79.3790, category: 'quick_meal', branch: 'Front St' },
   { id: 'th-002', name: 'Tim Hortons — Bloor & Bathurst', brand: 'tim_hortons', lat: 43.6655, lon: -79.4111, category: 'quick_meal', branch: 'Bloor & Bathurst' },
+  { id: 'th-bm-001', name: 'Tim Hortons — Blue Mountain', brand: 'tim_hortons', lat: 44.50, lon: -80.31, category: 'quick_meal', branch: 'Blue Mountain Resort' },
+  { id: 'th-wh-001', name: 'Tim Hortons — Whistler Village', brand: 'tim_hortons', lat: 50.11, lon: -122.95, category: 'quick_meal', branch: 'Whistler Village' },
   { id: 'ws-001', name: 'Westside — Queen West', brand: 'westside', lat: 43.6478, lon: -79.4068, category: 'home_living', branch: 'Queen West' },
   { id: 'ws-002', name: 'Westside — North York', brand: 'westside', lat: 43.7620, lon: -79.4131, category: 'home_living', branch: 'North York' },
   { id: 'se-001', name: 'Sports Experts — Toronto Eaton', brand: 'sports_experts', lat: 43.6541, lon: -79.3804, category: 'sporting_goods', branch: 'Eaton' },
@@ -197,6 +199,18 @@ const STORE_INVENTORY: Record<string, StoreItem[]> = {
     { name: 'Steeped Tea + Donut Combo', price: 5.99, category: 'quick_meal' },
     { name: 'Chicken Wrap Combo', price: 11.49, category: 'quick_meal' },
     { name: 'Cold Brew + Muffin Combo', price: 7.99, category: 'quick_meal' },
+  ],
+  'th-bm-001': [ // Tim Hortons — Blue Mountain (ski resort, outdoor context)
+    { name: 'Hot Chocolate + Muffin Combo', price: 8.49, category: 'quick_meal' },
+    { name: 'Double-Double + Breakfast Wrap', price: 9.49, category: 'quick_meal' },
+    { name: 'Large Coffee (to-go)', price: 3.49, category: 'quick_meal' },
+    { name: 'Iced Capp (Large)', price: 5.49, category: 'quick_meal' },
+  ],
+  'th-wh-001': [ // Tim Hortons — Whistler Village (mountain resort)
+    { name: 'Hot Chocolate + Donut', price: 7.49, category: 'quick_meal' },
+    { name: 'Steeped Tea + Bagel Combo', price: 7.99, category: 'quick_meal' },
+    { name: 'Double-Double + Timbits (10)', price: 8.49, category: 'quick_meal' },
+    { name: 'French Vanilla (Large)', price: 4.49, category: 'quick_meal' },
   ],
   'ws-001': [ // Westside — Queen West
     { name: 'Air Fryer 5L', price: 89.99, category: 'home_living' },
@@ -382,6 +396,17 @@ const PETRO_STATIONS = [
   { name: 'Petro-Canada — Lawrence Ave', lat: 43.7241, lon: -79.4318 },
   { name: 'Petro-Canada — Yonge & Finch', lat: 43.7800, lon: -79.4141 },
 ];
+
+// ── External partner brands (non-CTC family — use partner trigger endpoint) ───
+
+const EXTERNAL_PARTNER_BRANDS = new Set<StoreFixture['brand']>([
+  'tim_hortons',
+  'petro_canada',
+  'party_city',
+  'westside',
+  'sports_experts',
+  'pro_hockey_life',
+]);
 
 // ── Haversine distance ─────────────────────────────────────────────────────────
 
@@ -716,6 +741,8 @@ export function ContextDashboard() {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScoutMatchResult | null>(null);
+  const [isPartnerTrigger, setIsPartnerTrigger] = useState(false);
+  const [partnerTriggerResponse, setPartnerTriggerResponse] = useState<PartnerTriggerApiResponse | null>(null);
   const [purchaseSummary, setPurchaseSummary] = useState<{
     store: StoreFixture;
     item: StoreItem;
@@ -747,27 +774,52 @@ export function ContextDashboard() {
     e.preventDefault();
     setLoading(true);
     setResult(null);
+    setPartnerTriggerResponse(null);
     setError(null);
 
-    const request: MatchRequest = {
-      member_id: member.id,
-      purchase_location: { lat: store.lat, lon: store.lon },
-      purchase_category: item.category,
-      rewards_earned: pointsEarned,
-      day_context: dayContext,
+    const summary = {
+      store,
+      item,
+      pointsEarned,
+      currentRewardsPoints,
+      totalRewardsPoints,
+      memberId: member.id,
     };
 
     try {
-      const res = await callScoutMatch(request);
-      setResult(res);
-      setPurchaseSummary({
-        store,
-        item,
-        pointsEarned,
-        currentRewardsPoints,
-        totalRewardsPoints,
-        memberId: member.id,
-      });
+      if (EXTERNAL_PARTNER_BRANDS.has(store.brand)) {
+        // Partner store — call partner trigger endpoint
+        setIsPartnerTrigger(true);
+        const eventId = `${store.id}-${member.id}-${Date.now()}`;
+        const partnerEvent: PartnerPurchaseEvent = {
+          event_id: eventId,
+          partner_id: store.brand,
+          partner_name: store.name,
+          purchase_amount: item.price,
+          purchase_category: item.category,
+          member_id: member.id,
+          timestamp: new Date(selectedDate + 'T12:00:00Z').toISOString(),
+          location: { lat: store.lat, lon: store.lon },
+          store_name: store.name,
+        };
+        const res = await callPartnerTrigger(partnerEvent);
+        setPartnerTriggerResponse(res);
+        // Synthetic no-match result so PushNotificationCard still renders purchase receipt
+        setResult({ matches: [], message: res.message });
+      } else {
+        // CTC family store — regular match scoring
+        setIsPartnerTrigger(false);
+        const request: MatchRequest = {
+          member_id: member.id,
+          purchase_location: { lat: store.lat, lon: store.lon },
+          purchase_category: item.category,
+          rewards_earned: pointsEarned,
+          day_context: dayContext,
+        };
+        const res = await callScoutMatch(request);
+        setResult(res);
+      }
+      setPurchaseSummary(summary);
       setRefreshCount((c) => c + 1);
     } catch (err) {
       const apiErr = err as ScoutMatchError;
@@ -919,7 +971,11 @@ export function ContextDashboard() {
           disabled={loading}
           className="btn-primary w-full"
         >
-          {loading ? 'Processing Transaction...' : 'Run Match Scoring'}
+          {loading
+            ? 'Processing Transaction...'
+            : EXTERNAL_PARTNER_BRANDS.has(store.brand)
+              ? 'Trigger Partner Cross-Sell'
+              : 'Run Match Scoring'}
         </button>
       </form>
 
@@ -930,6 +986,23 @@ export function ContextDashboard() {
           className="card border-l-2 border-red-500 px-4 py-3 text-sm text-red-700"
         >
           {error}
+        </div>
+      )}
+
+      {/* ── Partner trigger confirmation banner ── */}
+      {isPartnerTrigger && partnerTriggerResponse && (
+        <div className="card border-l-2 border-green-500 px-4 py-3 bg-green-50">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="material-symbols-outlined text-[16px] text-green-600" aria-hidden="true">bolt</span>
+            <p className="text-sm font-semibold text-green-800">Partner Cross-Sell Triggered</p>
+          </div>
+          <p className="text-xs text-green-700">
+            Purchase at <strong>{purchaseSummary?.store.name}</strong> received. Claude Haiku is predicting the most
+            relevant Canadian Tire product and generating a personalised offer.
+          </p>
+          <p className="text-xs text-green-600 mt-1">
+            ✓ Check the <strong>Hub</strong> in a few seconds to see the generated active offer.
+          </p>
         </div>
       )}
 
