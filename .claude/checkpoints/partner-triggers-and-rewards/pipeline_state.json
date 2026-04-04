@@ -1,0 +1,23 @@
+{
+  "feature": "partner-triggers-and-rewards",
+  "current_phase": "implementation",
+  "phases": {
+    "requirements": "completed",
+    "architecture": "completed",
+    "design-review": "completed",
+    "impl-planning": "completed",
+    "implementation": "pending",
+    "simplify": "pending",
+    "review": "pending",
+    "verification": "pending",
+    "risk": "pending",
+    "pr": "pending"
+  },
+  "iteration_counts": {
+    "design_review_to_architecture": 0,
+    "spec_review_to_implementation": 0,
+    "risk_to_implementation": 0,
+    "risk_to_architecture": 0
+  },
+  "branch": "feat/partner-triggers-and-rewards"
+}

@@ -15,11 +15,13 @@ export function AISuggestionsPanel({ suggestions: initialSuggestions }: AISugges
   const [suggestions, setSuggestions] = useState<InventorySuggestion[]>(initialSuggestions);
   const [secondsAgo, setSecondsAgo] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  // Track product_ids that already have an offer generated — disables the Generate button
+  const [offeredProductIds, setOfferedProductIds] = useState<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const fresh = await getInventorySuggestions(6);
+      const fresh = await getInventorySuggestions(); // No limit — return all clearance items
       setSuggestions(fresh);
       setSecondsAgo(0);
     } catch {
@@ -53,6 +55,10 @@ export function AISuggestionsPanel({ suggestions: initialSuggestions }: AISugges
       : secondsAgo < 60
         ? `Refreshed ${secondsAgo}s ago`
         : `Refreshed ${Math.floor(secondsAgo / 60)}m ago`;
+
+  function handleOfferGenerated(productId: string) {
+    setOfferedProductIds((prev) => new Set(prev).add(productId));
+  }
 
   if (suggestions.length === 0) {
     return (
@@ -112,7 +118,12 @@ export function AISuggestionsPanel({ suggestions: initialSuggestions }: AISugges
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {suggestions.map((suggestion) => (
-          <InventorySuggestionCard key={suggestion.product_id} suggestion={suggestion} />
+          <InventorySuggestionCard
+            key={suggestion.product_id}
+            suggestion={suggestion}
+            isOffered={offeredProductIds.has(suggestion.product_id)}
+            onOfferGenerated={handleOfferGenerated}
+          />
         ))}
       </div>
     </div>

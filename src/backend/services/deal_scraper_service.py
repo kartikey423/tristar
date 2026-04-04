@@ -30,6 +30,7 @@ from loguru import logger
 
 from src.backend.core.config import settings
 from src.backend.models.offer_brief import DealSuggestion
+from src.backend.services.hub_api_client import HubApiClient
 
 # In-memory cache: URL → (deals, expires_at)
 _deal_cache: dict[str, tuple[list[DealSuggestion], datetime]] = {}
@@ -39,11 +40,11 @@ _CACHE_TTL_MINUTES = 15  # Refresh every 15 minutes
 class DealScraperService:
     """Scrape Canadian Tire deals using Haiku for intelligent HTML extraction."""
 
-    def __init__(self) -> None:
+    def __init__(self, hub_client: Optional[HubApiClient] = None) -> None:
         self.urls = {
+            "clearance": "https://www.canadiantire.ca/en/promotions/clearance.html",  # PRIMARY
             "weekly_deals": "https://www.canadiantire.ca/en/promotions/weekly-deals.html",
             "flyer": "https://www.canadiantire.ca/en/flyer.html",
-            "clearance": "https://www.canadiantire.ca/en/promotions/clearance.html",
         }
         self._http_client = httpx.AsyncClient(
             timeout=15.0,
@@ -57,6 +58,9 @@ class DealScraperService:
             },
         )
         self._claude = Anthropic(api_key=settings.CLAUDE_API_KEY)
+        self._hub = hub_client
+        # Cache for approved deal IDs (5-minute TTL)
+        self._approved_cache: tuple[set[str], datetime] | None = None
 
     async def fetch_deals(self) -> list[DealSuggestion]:
         """Fetch and parse deals from all Canadian Tire sources.
@@ -90,6 +94,15 @@ class DealScraperService:
                 if cached_stale:
                     all_deals.extend(cached_stale[0])
                     logger.info(f"Using stale cache for {source}")
+
+        # Filter out deals that have been approved in Hub
+        approved_ids = await self._get_approved_deal_ids()
+        if approved_ids:
+            before_count = len(all_deals)
+            all_deals = [d for d in all_deals if d.deal_id not in approved_ids]
+            filtered_count = before_count - len(all_deals)
+            if filtered_count > 0:
+                logger.info(f"Filtered {filtered_count} already-approved deals from feed")
 
         # Randomize for variety in Designer feed
         random.shuffle(all_deals)
@@ -169,7 +182,7 @@ Return ONLY the JSON array, no markdown formatting or explanation."""
 
             # Convert to DealSuggestion objects
             deals: list[DealSuggestion] = []
-            for raw in raw_deals[:15]:  # Cap at 15 deals per source
+            for raw in raw_deals:  # No hard cap — return all deals Haiku extracts
                 try:
                     product_name = raw.get("product_name", "Unknown Product")
                     category = raw.get("category", "general")
@@ -243,3 +256,34 @@ Return ONLY the JSON array, no markdown formatting or explanation."""
         """Store deals in cache with TTL."""
         expires_at = datetime.utcnow() + timedelta(minutes=_CACHE_TTL_MINUTES)
         _deal_cache[url] = (deals, expires_at)
+
+    async def _get_approved_deal_ids(self) -> set[str]:
+        """Get set of deal_ids that have been approved in Hub (cached for 5 minutes)."""
+        if self._hub is None:
+            return set()  # No deduplication if hub client not provided
+
+        # Check cache (5-minute TTL)
+        if self._approved_cache is not None:
+            approved_ids, expires_at = self._approved_cache
+            if datetime.utcnow() < expires_at:
+                return approved_ids
+
+        # Fetch all offers from Hub
+        try:
+            all_offers = await self._hub.get_all_offers()
+            # Extract source_deal_id values (filter out None)
+            approved_ids = {
+                offer.source_deal_id
+                for offer in all_offers
+                if offer.source_deal_id is not None
+            }
+
+            # Cache result for 5 minutes
+            self._approved_cache = (approved_ids, datetime.utcnow() + timedelta(minutes=5))
+
+            logger.debug(f"Fetched {len(approved_ids)} approved deal IDs from Hub")
+            return approved_ids
+
+        except Exception as e:
+            logger.warning(f"Failed to fetch approved deals from Hub: {e}")
+            return set()  # On error, don't filter anything

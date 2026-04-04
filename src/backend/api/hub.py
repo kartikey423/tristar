@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 
 from src.backend.api.deps import get_hub_audit_service, get_hub_store
 from src.backend.core.security import AuthUser, get_current_user, require_marketing_or_system_role, require_system_role
-from src.backend.models.offer_brief import OfferBrief, OfferStatus, TriggerType
+from src.backend.models.offer_brief import AUTO_ACTIVE_TRIGGER_TYPES, OfferBrief, OfferStatus, TriggerType
 from src.backend.services.hub_audit_service import HubAuditEvent, HubAuditService
 from src.backend.services.hub_store import HubStore, OfferAlreadyExistsError, RedisUnavailableError
 
@@ -78,15 +78,15 @@ async def save_offer(
     hub_store: HubStore = Depends(get_hub_store),
     hub_audit: HubAuditService = Depends(get_hub_audit_service),
 ) -> OfferBrief:
-    """F-003 FIX: Validate trigger_type before accepting status=active."""
+    """Save offer to Hub. Only auto-triggered offers (purchase_triggered, partner_triggered) may be status=active."""
     t0 = time.monotonic()
     try:
-        if offer.status == OfferStatus.active and offer.trigger_type != TriggerType.purchase_triggered:
+        if offer.status == OfferStatus.active and offer.trigger_type not in AUTO_ACTIVE_TRIGGER_TYPES:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
-                    f"status=active is only permitted when trigger_type=purchase_triggered. "
-                    f"Got trigger_type={offer.trigger_type.value}. "
+                    f"status=active is only permitted when trigger_type is purchase_triggered "
+                    f"or partner_triggered. Got trigger_type={offer.trigger_type.value}. "
                     "Marketer-initiated offers must follow draft → approved → active flow."
                 ),
             )

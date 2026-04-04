@@ -31,12 +31,23 @@ function SubmitButton() {
 
 interface ManualEntryFormProps {
   initialObjective?: string;
+  aiSuggestedConstructValue?: number;
 }
 
-export function ManualEntryForm({ initialObjective }: ManualEntryFormProps) {
+export function ManualEntryForm({ initialObjective, aiSuggestedConstructValue }: ManualEntryFormProps) {
   const [generatedOffer, setGeneratedOffer] = useState<OfferBrief | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  // construct_value: the discount percentage the marketer can override
+  const [constructValue, setConstructValue] = useState<string>(
+    aiSuggestedConstructValue !== undefined ? String(aiSuggestedConstructValue) : ''
+  );
+  // Tracks fields the marketer has manually edited — AI suggestions cannot overwrite these
+  const [overriddenFields, setOverriddenFields] = useState<Set<string>>(new Set());
+
+  function markOverridden(fieldName: string) {
+    setOverriddenFields((prev) => new Set(prev).add(fieldName));
+  }
 
   async function handleSubmit(formData: FormData) {
     const objective = formData.get('objective') as string;
@@ -48,6 +59,11 @@ export function ManualEntryForm({ initialObjective }: ManualEntryFormProps) {
     }
     setValidationError(null);
     setError(null);
+
+    // Attach marketer's construct_value to formData if set
+    if (constructValue) {
+      formData.set('construct_value', constructValue);
+    }
 
     const result = await generateOfferAction(formData);
     if (result.success) {
@@ -86,6 +102,32 @@ export function ManualEntryForm({ initialObjective }: ManualEntryFormProps) {
               Describe your marketing goal in 1-2 sentences (10-500 characters).
             </p>
           )}
+        </div>
+
+        <div>
+          <label htmlFor="construct_value" className="input-label">
+            Offer Discount % <span className="text-gray-400 font-normal">(optional — overrides AI suggestion)</span>
+          </label>
+          <input
+            id="construct_value"
+            name="construct_value"
+            type="number"
+            min={1}
+            max={100}
+            value={constructValue}
+            placeholder="e.g., 20"
+            className="input"
+            aria-describedby="construct-value-hint"
+            onChange={(e) => {
+              setConstructValue(e.target.value);
+              markOverridden('construct_value');
+            }}
+          />
+          <p id="construct-value-hint" className="mt-1.5 text-xs text-gray-400">
+            {overriddenFields.has('construct_value')
+              ? 'Your value will be used — AI suggestions will not override this field.'
+              : 'Leave blank to let AI determine the optimal discount.'}
+          </p>
         </div>
 
         <SubmitButton />

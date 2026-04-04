@@ -153,8 +153,9 @@ export async function approveOffer(
 /**
  * Fetch AI-driven inventory suggestions for offer creation.
  */
-export async function getInventorySuggestions(limit = 3): Promise<InventorySuggestion[]> {
-  const response = await fetch(`${BASE_URL}/api/designer/suggestions?limit=${limit}`, {
+export async function getInventorySuggestions(limit?: number): Promise<InventorySuggestion[]> {
+  const params = limit !== undefined ? `?limit=${limit}` : '';
+  const response = await fetch(`${BASE_URL}/api/designer/suggestions${params}`, {
     method: 'GET',
     headers: buildHeaders(false),
   });

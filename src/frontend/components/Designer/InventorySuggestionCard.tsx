@@ -3,6 +3,8 @@ import { prefillObjectiveAction } from '../../app/designer/actions';
 
 interface InventorySuggestionCardProps {
   suggestion: InventorySuggestion;
+  isOffered?: boolean;
+  onOfferGenerated?: (productId: string) => void;
 }
 
 const URGENCY_STYLES: Record<string, string> = {
@@ -17,7 +19,7 @@ const URGENCY_LABELS: Record<string, string> = {
   low: 'NORMAL',
 };
 
-export function InventorySuggestionCard({ suggestion }: InventorySuggestionCardProps) {
+export function InventorySuggestionCard({ suggestion, isOffered = false, onOfferGenerated }: InventorySuggestionCardProps) {
   const urgencyStyle = URGENCY_STYLES[suggestion.urgency] ?? URGENCY_STYLES.medium;
   const urgencyLabel = URGENCY_LABELS[suggestion.urgency] ?? suggestion.urgency;
 
@@ -50,14 +52,21 @@ export function InventorySuggestionCard({ suggestion }: InventorySuggestionCardP
         &ldquo;{suggestion.suggested_objective}&rdquo;
       </p>
 
-      <form action={prefillObjectiveAction} className="mt-auto">
+      <form action={prefillObjectiveAction} className="mt-auto" onSubmit={() => onOfferGenerated?.(suggestion.product_id)}>
         <input type="hidden" name="objective" value={suggestion.suggested_objective} />
         <button
           type="submit"
-          className="w-full rounded-md border border-ct-red bg-white px-4 py-2 text-sm font-medium text-ct-red transition hover:bg-ct-red hover:text-white focus:outline-none focus:ring-2 focus:ring-ct-red focus:ring-offset-2"
-          aria-label={`Use objective: ${suggestion.suggested_objective}`}
+          disabled={isOffered}
+          className={`w-full rounded-md border px-4 py-2 text-sm font-medium transition
+            focus:outline-none focus:ring-2 focus:ring-ct-red focus:ring-offset-2
+            ${isOffered
+              ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'border-ct-red bg-white text-ct-red hover:bg-ct-red hover:text-white'
+            }`}
+          aria-label={isOffered ? 'Offer already created for this item' : `Use objective: ${suggestion.suggested_objective}`}
+          aria-disabled={isOffered}
         >
-          Generate Offer
+          {isOffered ? 'Offer Created' : 'Generate Offer'}
         </button>
       </form>
     </div>

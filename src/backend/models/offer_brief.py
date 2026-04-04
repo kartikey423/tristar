@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, model_validator
 class TriggerType(str, Enum):
     marketer_initiated = "marketer_initiated"
     purchase_triggered = "purchase_triggered"
+    partner_triggered = "partner_triggered"
 
 
 class OfferStatus(str, Enum):
@@ -35,6 +36,12 @@ class RiskSeverity(str, Enum):
     critical = "critical"
 
 
+# Trigger types that are permitted to save an offer directly as status=active.
+# Marketer-initiated offers must follow draft → approved → active flow.
+AUTO_ACTIVE_TRIGGER_TYPES: frozenset[TriggerType] = frozenset(
+    {TriggerType.purchase_triggered, TriggerType.partner_triggered}
+)
+
 # ─── Nested Models ────────────────────────────────────────────────────────────
 
 
@@ -45,10 +52,26 @@ class Segment(BaseModel):
     criteria: list[str] = Field(..., min_length=1)
 
 
+class PaymentSplit(BaseModel):
+    """Triangle Rewards 75/25 payment split constraint."""
+
+    points_max_pct: float = Field(75.0, ge=0, le=100,
+        description="Maximum percentage of offer value payable in Triangle points")
+    cash_min_pct: float = Field(25.0, ge=0, le=100,
+        description="Minimum percentage payable via credit/debit card")
+
+    @model_validator(mode="after")
+    def validate_split_sum(self) -> "PaymentSplit":
+        if abs((self.points_max_pct + self.cash_min_pct) - 100.0) > 0.01:
+            raise ValueError("points_max_pct + cash_min_pct must equal 100")
+        return self
+
+
 class Construct(BaseModel):
     type: str = Field(..., min_length=1)
     value: float = Field(..., ge=0)
     description: str = Field(..., min_length=1)
+    payment_split: Optional[PaymentSplit] = None
 
 
 class Channel(BaseModel):
@@ -87,15 +110,16 @@ class OfferBrief(BaseModel):
     trigger_type: TriggerType = TriggerType.marketer_initiated
     created_at: datetime = Field(default_factory=datetime.utcnow)
     valid_until: Optional[datetime] = None
+    source_deal_id: Optional[str] = Field(None, description="If created from DealSuggestion, the deal_id for deduplication")
 
     model_config = {"from_attributes": True}
 
     @model_validator(mode="after")
     def validate_valid_until_for_purchase_triggered(self) -> "OfferBrief":
-        """Purchase-triggered offers must have valid_until set."""
-        if self.trigger_type == TriggerType.purchase_triggered and self.valid_until is None:
+        """Purchase-triggered and partner-triggered offers must have valid_until set."""
+        if self.trigger_type in AUTO_ACTIVE_TRIGGER_TYPES and self.valid_until is None:
             raise ValueError(
-                "valid_until is required for purchase_triggered offers"
+                "valid_until is required for purchase_triggered and partner_triggered offers"
             )
         return self
 

@@ -6,6 +6,7 @@ from functools import lru_cache
 
 from src.backend.core.config import settings
 from src.backend.services.audit_log_service import AuditLogService
+from src.backend.services.canadian_holiday_service import CanadianHolidayService
 from src.backend.services.claude_api import ClaudeApiService
 from src.backend.services.claude_context_scoring_service import ClaudeContextScoringService
 from src.backend.services.context_scoring_service import ContextScoringService
@@ -20,10 +21,13 @@ from src.backend.services.hub_audit_service import HubAuditService
 from src.backend.services.hub_store import HubStore, InMemoryHubStore, RedisHubStore
 from src.backend.services.inventory_service import InventoryService
 from src.backend.services.deal_scraper_service import DealScraperService
+from src.backend.services.location_zone_service import LocationZoneService
 from src.backend.services.mock_member_profile_store import MockMemberProfileStore
 from src.backend.services.notification_service import NotificationService
 from src.backend.services.purchase_event_handler import PurchaseEventHandler
 from src.backend.services.scout_audit_service import ScoutAuditService
+from src.backend.services.partner_trigger_service import PartnerTriggerService
+from src.backend.services.redemption_enforcement_service import RedemptionEnforcementService
 from src.backend.services.scout_match_service import ScoutMatchService
 from src.backend.services.scout_service_auth import scout_auth
 
@@ -51,7 +55,7 @@ def get_inventory_service() -> InventoryService:
 
 @lru_cache(maxsize=1)
 def get_deal_scraper_service() -> DealScraperService:
-    return DealScraperService()
+    return DealScraperService(hub_client=get_hub_client())
 
 
 @lru_cache(maxsize=1)
@@ -120,6 +124,31 @@ def get_mock_member_store() -> MockMemberProfileStore:
 @lru_cache(maxsize=1)
 def get_ctc_store_fixtures() -> CTCStoreFixtures:
     return CTCStoreFixtures()
+
+
+@lru_cache(maxsize=1)
+def get_location_zone_service() -> LocationZoneService:
+    return LocationZoneService()
+
+
+@lru_cache(maxsize=1)
+def get_canadian_holiday_service() -> CanadianHolidayService:
+    return CanadianHolidayService()
+
+
+@lru_cache(maxsize=1)
+def get_partner_trigger_service() -> PartnerTriggerService:
+    return PartnerTriggerService(
+        hub_client=get_hub_client(),
+        fraud_service=get_fraud_service(),
+        location_zone_service=get_location_zone_service(),
+        holiday_service=get_canadian_holiday_service(),
+    )
+
+
+@lru_cache(maxsize=1)
+def get_redemption_enforcement_service() -> RedemptionEnforcementService:
+    return RedemptionEnforcementService()
 
 
 @lru_cache(maxsize=1)

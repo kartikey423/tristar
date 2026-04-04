@@ -5,6 +5,8 @@ Validates HS256 Bearer tokens, extracts role, and enforces RBAC.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 from typing import Optional
 
 import jwt
@@ -15,6 +17,18 @@ from pydantic import BaseModel
 from src.backend.core.config import settings
 
 security = HTTPBearer()
+
+
+def verify_webhook_signature(body: bytes, signature: Optional[str], secret: str) -> bool:
+    """Verify HMAC-SHA256 signature from X-Webhook-Signature header.
+
+    Uses constant-time comparison to prevent timing attacks.
+    Returns False if signature is missing or malformed.
+    """
+    if not signature:
+        return False
+    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(f"sha256={expected}", signature)
 
 
 class AuthUser(BaseModel):

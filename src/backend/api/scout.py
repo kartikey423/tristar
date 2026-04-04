@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
 from loguru import logger
 
 from src.backend.api.deps import (
@@ -15,18 +13,22 @@ from src.backend.api.deps import (
     get_context_scoring_service,
     get_delivery_constraint_service,
     get_notification_service,
+    get_partner_trigger_service,
     get_purchase_event_handler,
     get_scout_audit_service,
     get_scout_match_service,
 )
 from src.backend.core.config import settings
+from src.backend.core.security import verify_webhook_signature
 from src.backend.models.offer_brief import OfferBrief
+from src.backend.models.partner_event import PartnerPurchaseEvent, PartnerTriggerResponse
 from src.backend.models.purchase_event import PurchaseContextRequest, PurchaseEventPayload
 from src.backend.models.scout_match import MatchRequest, MatchResponse, NoMatchResponse
 from src.backend.services.audit_log_service import AuditLogService
 from src.backend.services.context_scoring_service import ContextScoringService
 from src.backend.services.delivery_constraint_service import DeliveryConstraintService
 from src.backend.services.notification_service import NotificationService
+from src.backend.services.partner_trigger_service import PartnerTriggerService
 from src.backend.services.purchase_event_handler import PurchaseEventHandler
 from src.backend.services.scout_audit_service import ScoutAuditService
 from src.backend.services.scout_match_service import ScoutMatchService
@@ -34,17 +36,6 @@ from src.backend.services.scout_service_auth import scout_auth
 
 router = APIRouter()
 
-
-def _verify_webhook_signature(body: bytes, signature: Optional[str]) -> bool:
-    """Verify HMAC-SHA256 signature from X-Webhook-Signature header."""
-    if not signature:
-        return False
-    expected = hmac.new(
-        settings.SCOUT_WEBHOOK_SECRET.encode(),
-        body,
-        hashlib.sha256,
-    ).hexdigest()
-    return hmac.compare_digest(f"sha256={expected}", signature)
 
 
 @router.post(
@@ -75,7 +66,7 @@ async def process_purchase_event(
     # Validate webhook signature in non-development environments
     if settings.ENVIRONMENT != "development":
         body = await request.body()
-        if not _verify_webhook_signature(body, x_webhook_signature):
+        if not verify_webhook_signature(body, x_webhook_signature, settings.SCOUT_WEBHOOK_SECRET):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid webhook signature",
@@ -261,3 +252,59 @@ async def get_activation_log(
 ) -> list[dict]:
     """GET /api/scout/activation-log/{member_id} — used by ContextDashboard (AC-021)."""
     return await scout_audit.get_recent(member_id, limit=limit)
+
+
+@router.post(
+    "/partner-trigger",
+    response_model=PartnerTriggerResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Process a partner purchase event and trigger a CTC cross-sell offer",
+    description=(
+        "Receives a purchase event from a CTC partner store (Tim Hortons, WestJet, etc.). "
+        "Authenticates via HMAC signature, deduplicates by event_id, then asynchronously "
+        "classifies the purchase context using Claude Haiku and generates a CTC offer. "
+        "Returns 202 immediately — offer generation happens in the background."
+    ),
+    responses={
+        202: {"description": "Event accepted — offer generation queued"},
+        400: {"description": "Duplicate event_id within 60s window"},
+        401: {"description": "Invalid or missing X-Webhook-Signature"},
+    },
+)
+async def partner_trigger(
+    request: Request,
+    event: PartnerPurchaseEvent,
+    background_tasks: BackgroundTasks,
+    x_webhook_signature: Optional[str] = Header(default=None),
+    partner_service: PartnerTriggerService = Depends(get_partner_trigger_service),
+) -> PartnerTriggerResponse:
+    """Process a partner purchase event and asynchronously generate a CTC cross-sell offer."""
+    # Verify HMAC signature in non-development environments
+    if settings.ENVIRONMENT != "development":
+        body = await request.body()
+        if not verify_webhook_signature(body, x_webhook_signature, settings.SCOUT_WEBHOOK_SECRET):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or missing X-Webhook-Signature",
+            )
+
+    # Deduplicate events within 60s window
+    if partner_service.is_duplicate(event.event_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Duplicate event_id '{event.event_id}' — already processed within 60s window",
+        )
+
+    # Queue Haiku classification + offer generation as background task
+    # Returns 202 immediately — satisfies < 2s latency SLA
+    background_tasks.add_task(partner_service.classify_and_generate, event)
+
+    logger.info(
+        "Partner trigger accepted",
+        extra={"member_id": event.member_id, "partner_id": event.partner_id,
+               "event_id": event.event_id},
+    )
+    return PartnerTriggerResponse(
+        status="accepted",
+        message=f"Partner purchase event from {event.partner_name} accepted for processing",
+    )

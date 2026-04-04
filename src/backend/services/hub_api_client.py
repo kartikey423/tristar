@@ -13,7 +13,7 @@ import httpx
 from loguru import logger
 
 from src.backend.core.config import settings
-from src.backend.models.offer_brief import OfferBrief, OfferStatus, TriggerType
+from src.backend.models.offer_brief import AUTO_ACTIVE_TRIGGER_TYPES, OfferBrief, OfferStatus, TriggerType
 from src.backend.services.scout_service_auth import scout_auth
 
 
@@ -35,13 +35,14 @@ class HubApiClient:
     async def save_offer(self, offer: OfferBrief) -> OfferBrief:
         """POST offer to Hub. Returns the saved offer with Hub-assigned metadata.
 
-        F-003: Asserts that only purchase_triggered offers can be saved with status=active.
+        Only auto-triggered offers (purchase_triggered, partner_triggered) may be saved as
+        status=active. Marketer-initiated offers must follow draft → approved → active flow.
         """
-        if offer.status == OfferStatus.active and offer.trigger_type != TriggerType.purchase_triggered:
+        if offer.status == OfferStatus.active and offer.trigger_type not in AUTO_ACTIVE_TRIGGER_TYPES:
             raise ValueError(
                 "BUG: Attempted to save an offer with status=active and "
                 f"trigger_type={offer.trigger_type.value}. "
-                "Only purchase_triggered offers may be directly activated. "
+                "Only purchase_triggered or partner_triggered offers may be directly activated. "
                 "Marketer-initiated offers must go through draft → approved first."
             )
 

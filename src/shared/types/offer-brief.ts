@@ -2,10 +2,10 @@ import { z } from 'zod';
 
 // ─── Enumerations ────────────────────────────────────────────────────────────
 
-export type TriggerType = 'marketer_initiated' | 'purchase_triggered';
+export type TriggerType = 'marketer_initiated' | 'purchase_triggered' | 'partner_triggered';
 export type OfferStatus = 'draft' | 'approved' | 'active' | 'expired';
 
-export const TRIGGER_TYPES: TriggerType[] = ['marketer_initiated', 'purchase_triggered'];
+export const TRIGGER_TYPES: TriggerType[] = ['marketer_initiated', 'purchase_triggered', 'partner_triggered'];
 export const OFFER_STATUSES: OfferStatus[] = ['draft', 'approved', 'active', 'expired'];
 
 // ─── Nested Type Interfaces ──────────────────────────────────────────────────
@@ -17,10 +17,16 @@ export interface Segment {
   criteria: string[];
 }
 
+export interface PaymentSplit {
+  points_max_pct: number; // max % payable in Triangle points (default 75)
+  cash_min_pct: number;   // min % payable via credit/debit (default 25)
+}
+
 export interface Construct {
   type: string;
   value: number;
   description: string;
+  payment_split?: PaymentSplit;
 }
 
 export interface Channel {
@@ -58,6 +64,7 @@ export interface OfferBrief {
   trigger_type: TriggerType;
   created_at: string; // ISO 8601
   valid_until?: string; // ISO 8601 — only for purchase_triggered offers
+  source_deal_id?: string; // If created from DealSuggestion, the deal_id for deduplication
 }
 
 // ─── Inventory Suggestion (AI mode) ──────────────────────────────────────────
@@ -82,10 +89,18 @@ export const SegmentSchema = z.object({
   criteria: z.array(z.string()).min(1, 'At least one segment criterion is required'),
 });
 
+export const PaymentSplitSchema = z.object({
+  points_max_pct: z.number().min(0).max(100),
+  cash_min_pct: z.number().min(0).max(100),
+}).refine((s) => Math.abs(s.points_max_pct + s.cash_min_pct - 100) < 0.01, {
+  message: 'points_max_pct + cash_min_pct must equal 100',
+});
+
 export const ConstructSchema = z.object({
   type: z.string().min(1, 'Construct type is required'),
   value: z.number().nonnegative(),
   description: z.string().min(1, 'Construct description is required'),
+  payment_split: PaymentSplitSchema.optional(),
 });
 
 export const ChannelSchema = z.object({
@@ -121,9 +136,10 @@ export const OfferBriefSchema = z.object({
   kpis: KPIsSchema,
   risk_flags: RiskFlagsSchema,
   status: z.enum(['draft', 'approved', 'active', 'expired']),
-  trigger_type: z.enum(['marketer_initiated', 'purchase_triggered']),
+  trigger_type: z.enum(['marketer_initiated', 'purchase_triggered', 'partner_triggered']),
   created_at: z.string().datetime({ message: 'created_at must be ISO 8601' }),
   valid_until: z.string().datetime({ message: 'valid_until must be ISO 8601' }).optional(),
+  source_deal_id: z.string().optional(),
 });
 
 // ─── Input Schema for Offer Generation ───────────────────────────────────────
