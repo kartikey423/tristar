@@ -892,9 +892,31 @@ export function ContextDashboard() {
             onChange={(e) => handleStoreChange(e.target.value)}
             className="input"
           >
-            {CTC_PARTNER_STORES.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
+            {(() => {
+              const BRAND_LABELS: Record<StoreFixture['brand'], string> = {
+                canadian_tire: 'Canadian Tire',
+                sport_chek: 'Sport Chek',
+                marks: "Mark's",
+                petro_canada: 'Petro-Canada',
+                party_city: 'Party City',
+                tim_hortons: 'Tim Hortons',
+                westside: 'Westside',
+                sports_experts: 'Sports Experts',
+                pro_hockey_life: 'Pro Hockey Life',
+              };
+              const groups: Partial<Record<StoreFixture['brand'], StoreFixture[]>> = {};
+              for (const s of CTC_PARTNER_STORES) {
+                if (!groups[s.brand]) groups[s.brand] = [];
+                groups[s.brand]!.push(s);
+              }
+              return (Object.entries(groups) as [StoreFixture['brand'], StoreFixture[]][]).map(([brand, stores]) => (
+                <optgroup key={brand} label={BRAND_LABELS[brand] ?? brand}>
+                  {stores.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </optgroup>
+              ));
+            })()}
           </select>
         </div>
 
