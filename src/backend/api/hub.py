@@ -137,9 +137,7 @@ async def save_offer(
 )
 async def get_offer(
     offer_id: str,
-    _user: AuthUser = Depends(get_current_user),
     hub_store: HubStore = Depends(get_hub_store),
-    hub_audit: HubAuditService = Depends(get_hub_audit_service),
 ) -> OfferBrief:
     t0 = time.monotonic()
     try:
@@ -158,15 +156,6 @@ async def get_offer(
                 detail=f"Offer {offer_id} not found",
             )
 
-        _fire_audit(
-            hub_audit.log_event(
-                HubAuditEvent(
-                    offer_id=offer_id,
-                    event="offer_read",
-                    actor_id=_user.user_id,
-                )
-            )
-        )
         return offer
 
     finally:
@@ -189,7 +178,6 @@ async def list_offers(
     member_id: Optional[str] = Query(default=None),
     trigger_type: Optional[TriggerType] = Query(default=None),
     since: Optional[datetime] = Query(default=None),
-    _user: AuthUser = Depends(get_current_user),
     hub_store: HubStore = Depends(get_hub_store),
 ) -> ListOffersResponse:
     t0 = time.monotonic()
