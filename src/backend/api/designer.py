@@ -277,13 +277,10 @@ async def approve_offer(
     summary="Get AI-driven inventory suggestions for offer creation",
     responses={
         200: {"description": "Top-3 overstock suggestions"},
-        401: {"description": "Authentication required"},
-        403: {"description": "Role 'marketing' required"},
     },
 )
 async def get_inventory_suggestions(
     limit: int = 3,
-    user: AuthUser = Depends(require_marketing_role),
     inventory: InventoryService = Depends(get_inventory_service),
     hub_store: HubStore = Depends(get_hub_store),
 ) -> list[InventorySuggestion]:
