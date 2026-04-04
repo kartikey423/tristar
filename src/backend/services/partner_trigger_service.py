@@ -48,7 +48,7 @@ from src.backend.services.location_zone_service import LocationZone, LocationZon
 # Key: (partner_id, LocationZone) → category
 _PARTNER_FALLBACK_CATEGORIES: dict[tuple[str, LocationZone], str] = {
     # Tim Hortons by zone
-    ("tim_hortons", LocationZone.hill_station): "outdoor_camping",
+    ("tim_hortons", LocationZone.hill_station): "winter_automotive",
     ("tim_hortons", LocationZone.cottage_lakes): "marine_fishing",
     ("tim_hortons", LocationZone.highway): "automotive_accessories",
     ("tim_hortons", LocationZone.urban): "automotive_cleaning",
@@ -71,8 +71,10 @@ _PARTNER_SYSTEM_PROMPTS: dict[str, str] = {
     "tim_hortons": (
         "You classify Canadian Tire cross-sell opportunities from Tim Hortons purchases.\n"
         "Examples:\n"
-        "- coffee/beverage purchase → travel_mugs\n"
-        "- drive-through coffee → automotive_cleaning\n"
+        "- coffee/beverage purchase at ski resort / mountain → winter_automotive (snow tires, winter gear)\n"
+        "- coffee/beverage at hill station → ski_accessories\n"
+        "- drive-through coffee (urban) → automotive_cleaning\n"
+        "- coffee/beverage purchase (urban) → travel_mugs\n"
         "- food/baked goods purchase → kitchen_storage\n"
         "- large order / group → entertaining_supplies\n"
         "Return ONLY a single CTC product category string, no explanation, no punctuation."
@@ -264,6 +266,8 @@ class PartnerTriggerService:
     _MARKETPLACE_PREMIUM: dict[str, float] = {
         "outdoor_camping": 1.18,
         "camping_gear": 1.18,
+        "winter_automotive": 1.16,
+        "ski_accessories": 1.22,
         "marine_fishing": 1.15,
         "automotive_accessories": 1.12,
         "automotive_cleaning": 1.10,
@@ -286,9 +290,9 @@ class PartnerTriggerService:
 
         display_category = category.replace("_", " ").title()
 
-        # Product recommendation per zone
+        # Product recommendation per zone (seasonal & location-aware)
         zone_product: dict[LocationZone, str] = {
-            LocationZone.hill_station: "camping gear, coolers & outdoor equipment",
+            LocationZone.hill_station: "winter tires, snow gear, ski accessories & outdoor equipment",
             LocationZone.cottage_lakes: "marine accessories, fishing gear & dock equipment",
             LocationZone.highway: "car emergency kits, motor oil & travel accessories",
             LocationZone.urban: "home & auto essentials",

@@ -7,16 +7,16 @@ import { InventorySuggestionCard } from './InventorySuggestionCard';
 
 interface AISuggestionsPanelProps {
   suggestions: InventorySuggestion[];
+  offeredObjectives: Set<string>;
+  onOfferGenerated: (objective: string) => void;
 }
 
 const REFRESH_INTERVAL_S = 60;
 
-export function AISuggestionsPanel({ suggestions: initialSuggestions }: AISuggestionsPanelProps) {
+export function AISuggestionsPanel({ suggestions: initialSuggestions, offeredObjectives, onOfferGenerated }: AISuggestionsPanelProps) {
   const [suggestions, setSuggestions] = useState<InventorySuggestion[]>(initialSuggestions);
   const [secondsAgo, setSecondsAgo] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // Track product_ids that already have an offer generated — disables the Generate button
-  const [offeredProductIds, setOfferedProductIds] = useState<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -39,11 +39,9 @@ export function AISuggestionsPanel({ suggestions: initialSuggestions }: AISugges
     return () => clearInterval(timer);
   }, []);
 
-  // Auto-refresh every 60 seconds
+  // Auto-refresh inventory suggestions every 60 seconds
   useEffect(() => {
-    const timer = setInterval(() => {
-      refresh();
-    }, REFRESH_INTERVAL_S * 1000);
+    const timer = setInterval(refresh, REFRESH_INTERVAL_S * 1000);
     return () => clearInterval(timer);
   }, [refresh]);
 
@@ -56,8 +54,13 @@ export function AISuggestionsPanel({ suggestions: initialSuggestions }: AISugges
         ? `Refreshed ${secondsAgo}s ago`
         : `Refreshed ${Math.floor(secondsAgo / 60)}m ago`;
 
-  function handleOfferGenerated(productId: string) {
-    setOfferedProductIds((prev) => new Set(prev).add(productId));
+  function isProductOffered(suggestion: InventorySuggestion): boolean {
+    for (const obj of offeredObjectives) {
+      if (obj === suggestion.suggested_objective || obj.includes(suggestion.product_name)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   if (suggestions.length === 0) {
@@ -121,8 +124,8 @@ export function AISuggestionsPanel({ suggestions: initialSuggestions }: AISugges
           <InventorySuggestionCard
             key={suggestion.product_id}
             suggestion={suggestion}
-            isOffered={offeredProductIds.has(suggestion.product_id)}
-            onOfferGenerated={handleOfferGenerated}
+            isOffered={isProductOffered(suggestion)}
+            onOfferGenerated={onOfferGenerated}
           />
         ))}
       </div>

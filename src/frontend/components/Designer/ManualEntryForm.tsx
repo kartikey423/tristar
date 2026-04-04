@@ -8,13 +8,13 @@ import type { OfferBrief } from '../../../shared/types/offer-brief';
 import { OfferBriefCard } from './OfferBriefCard';
 import { Spinner } from './Spinner';
 
-function SubmitButton() {
+function SubmitButton({ alreadyGenerated }: { alreadyGenerated: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
-      disabled={pending}
-      className="btn-primary w-full"
+      disabled={pending || alreadyGenerated}
+      className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
       aria-label="Generate offer brief"
     >
       {pending ? (
@@ -22,6 +22,8 @@ function SubmitButton() {
           <Spinner />
           Generating...
         </>
+      ) : alreadyGenerated ? (
+        'Offer Sent to Hub'
       ) : (
         'Generate Offer'
       )}
@@ -32,9 +34,10 @@ function SubmitButton() {
 interface ManualEntryFormProps {
   initialObjective?: string;
   aiSuggestedConstructValue?: number;
+  onOfferGenerated?: (objective: string) => void;
 }
 
-export function ManualEntryForm({ initialObjective, aiSuggestedConstructValue }: ManualEntryFormProps) {
+export function ManualEntryForm({ initialObjective, aiSuggestedConstructValue, onOfferGenerated }: ManualEntryFormProps) {
   const [generatedOffer, setGeneratedOffer] = useState<OfferBrief | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -47,6 +50,32 @@ export function ManualEntryForm({ initialObjective, aiSuggestedConstructValue }:
 
   function markOverridden(fieldName: string) {
     setOverriddenFields((prev) => new Set(prev).add(fieldName));
+  }
+
+  async function handleConstructValueBlur() {
+    if (!generatedOffer || !constructValue) return;
+    const parsedValue = parseFloat(constructValue);
+    if (isNaN(parsedValue)) return;
+    if (parsedValue === generatedOffer.construct.value) return;
+    // Replace old discount % in objective text so Hub shows the updated value
+    const oldPct = generatedOffer.construct.value;
+    const pctRegex = new RegExp(String(oldPct).replace('.', '\\.') + '(\\.0)?%', 'g');
+    const newObjective = generatedOffer.objective.replace(pctRegex, `${parsedValue}%`);
+    const objectiveChanged = newObjective !== generatedOffer.objective;
+    try {
+      await updateConstructValueAction(
+        generatedOffer.offer_id,
+        parsedValue,
+        objectiveChanged ? newObjective : undefined,
+      );
+      setGeneratedOffer({
+        ...generatedOffer,
+        construct: { ...generatedOffer.construct, value: parsedValue },
+        ...(objectiveChanged ? { objective: newObjective } : {}),
+      });
+    } catch {
+      // Best-effort — Hub PATCH failed silently
+    }
   }
 
   async function handleSubmit(formData: FormData) {
@@ -71,17 +100,28 @@ export function ManualEntryForm({ initialObjective, aiSuggestedConstructValue }:
       // If marketer manually overrode the discount, apply it now and persist to Hub
       const parsedValue = constructValue ? parseFloat(constructValue) : NaN;
       if (overriddenFields.has('construct_value') && !isNaN(parsedValue)) {
+        // Also update the objective text so Hub reflects the new discount %
+        const oldPct = finalOffer.construct.value;
+        const pctRegex = new RegExp(String(oldPct).replace('.', '\\.') + '(\\.0)?%', 'g');
+        const newObjective = finalOffer.objective.replace(pctRegex, `${parsedValue}%`);
+        const objectiveChanged = newObjective !== finalOffer.objective;
         try {
-          await updateConstructValueAction(finalOffer.offer_id, parsedValue);
+          await updateConstructValueAction(
+            finalOffer.offer_id,
+            parsedValue,
+            objectiveChanged ? newObjective : undefined,
+          );
         } catch {
           // Best-effort — if PATCH fails, still show offer with local override applied
         }
         finalOffer = {
           ...finalOffer,
           construct: { ...finalOffer.construct, value: parsedValue },
+          ...(objectiveChanged ? { objective: newObjective } : {}),
         };
       }
       setGeneratedOffer(finalOffer);
+      onOfferGenerated?.(finalOffer.objective);
     } else {
       setError(result.error);
     }
@@ -136,6 +176,7 @@ export function ManualEntryForm({ initialObjective, aiSuggestedConstructValue }:
               setConstructValue(e.target.value);
               markOverridden('construct_value');
             }}
+            onBlur={handleConstructValueBlur}
           />
           <p id="construct-value-hint" className="mt-1.5 text-xs text-gray-400">
             {overriddenFields.has('construct_value')
@@ -144,7 +185,7 @@ export function ManualEntryForm({ initialObjective, aiSuggestedConstructValue }:
           </p>
         </div>
 
-        <SubmitButton />
+        <SubmitButton alreadyGenerated={generatedOffer !== null} />
       </form>
 
       {error && (

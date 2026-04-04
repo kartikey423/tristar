@@ -336,7 +336,7 @@ async def get_demo_token(role: str = "marketing") -> dict:
     payload = {
         "sub": f"demo-{role}",
         "role": role,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=settings.SERVICE_JWT_EXPIRY_HOURS),
     }
     token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
     return {

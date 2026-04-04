@@ -11,9 +11,10 @@
  * purchase history preferences.
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { MatchRequest, ScoutMatchResult, ScoutMatchError, PartnerPurchaseEvent, PartnerTriggerApiResponse } from '@/lib/scout-api';
 import { callScoutMatch, callPartnerTrigger, isMatchResponse } from '@/lib/scout-api';
+import type { OfferBrief } from '../../../shared/types/offer-brief';
 import { ActivationFeed } from './ActivationFeed';
 
 // ── Store fixtures ─────────────────────────────────────────────────────────────
@@ -743,6 +744,9 @@ export function ContextDashboard() {
   const [result, setResult] = useState<ScoutMatchResult | null>(null);
   const [isPartnerTrigger, setIsPartnerTrigger] = useState(false);
   const [partnerTriggerResponse, setPartnerTriggerResponse] = useState<PartnerTriggerApiResponse | null>(null);
+  const [partnerGeneratedOffer, setPartnerGeneratedOffer] = useState<OfferBrief | null>(null);
+  const [partnerPollStatus, setPartnerPollStatus] = useState<'idle' | 'polling' | 'found' | 'timeout'>('idle');
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [purchaseSummary, setPurchaseSummary] = useState<{
     store: StoreFixture;
     item: StoreItem;
@@ -765,6 +769,46 @@ export function ContextDashboard() {
 
   const { dayContext, occasion } = deriveDateContext(selectedDate);
 
+  // Cleanup poll timer on unmount
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, []);
+
+  function startPartnerOfferPoll(preIds: Set<string>) {
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    setPartnerPollStatus('polling');
+    let attempts = 0;
+    const maxAttempts = 15; // 30 seconds at 2s intervals
+
+    pollTimerRef.current = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch('/api/hub-offers', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          const newOffer = (data.offers ?? []).find(
+            (o: OfferBrief) => !preIds.has(o.offer_id) && o.trigger_type === 'partner_triggered',
+          );
+          if (newOffer) {
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+            setPartnerGeneratedOffer(newOffer as OfferBrief);
+            setPartnerPollStatus('found');
+            return;
+          }
+        }
+      } catch { /* keep polling */ }
+
+      if (attempts >= maxAttempts) {
+        if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+        setPartnerPollStatus('timeout');
+      }
+    }, 2000);
+  }
+
   function handleStoreChange(newStoreId: string) {
     setStoreId(newStoreId);
     setItemIndex(0);
@@ -775,6 +819,9 @@ export function ContextDashboard() {
     setLoading(true);
     setResult(null);
     setPartnerTriggerResponse(null);
+    setPartnerGeneratedOffer(null);
+    setPartnerPollStatus('idle');
+    if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
     setError(null);
 
     const summary = {
@@ -802,10 +849,24 @@ export function ContextDashboard() {
           location: { lat: store.lat, lon: store.lon },
           store_name: store.name,
         };
+
+        // Snapshot existing offer IDs before firing so we can detect the new one
+        let preIds = new Set<string>();
+        try {
+          const preRes = await fetch('/api/hub-offers', { cache: 'no-store' });
+          if (preRes.ok) {
+            const preData = await preRes.json();
+            preIds = new Set((preData.offers ?? []).map((o: { offer_id: string }) => o.offer_id));
+          }
+        } catch { /* use empty set — polling will still work */ }
+
         const res = await callPartnerTrigger(partnerEvent);
         setPartnerTriggerResponse(res);
         // Synthetic no-match result so PushNotificationCard still renders purchase receipt
         setResult({ matches: [], message: res.message });
+
+        // Start polling Hub for the newly generated CTC offer
+        startPartnerOfferPoll(preIds);
       } else {
         // CTC family store — regular match scoring
         setIsPartnerTrigger(false);
@@ -1011,20 +1072,40 @@ export function ContextDashboard() {
         </div>
       )}
 
-      {/* ── Partner trigger confirmation banner ── */}
+      {/* ── Partner trigger confirmation + inline offer ── */}
       {isPartnerTrigger && partnerTriggerResponse && (
-        <div className="card border-l-2 border-green-500 px-4 py-3 bg-green-50">
-          <div className="flex items-center gap-2 mb-1">
+        <div className="card overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center gap-2 border-l-4 border-green-500 bg-green-50 px-4 py-3">
             <span className="material-symbols-outlined text-[16px] text-green-600" aria-hidden="true">bolt</span>
             <p className="text-sm font-semibold text-green-800">Partner Cross-Sell Triggered</p>
           </div>
-          <p className="text-xs text-green-700">
-            Purchase at <strong>{purchaseSummary?.store.name}</strong> received. Claude Haiku is predicting the most
-            relevant Canadian Tire product and generating a personalised offer.
-          </p>
-          <p className="text-xs text-green-600 mt-1">
-            ✓ Check the <strong>Hub</strong> in a few seconds to see the generated active offer.
-          </p>
+          <div className="bg-green-50/50 px-4 py-2 border-b border-green-100">
+            <p className="text-xs text-green-700">
+              Purchase at <strong>{purchaseSummary?.store.name}</strong> received. Claude Haiku is classifying
+              the purchase context and generating a personalised Canadian Tire offer.
+            </p>
+          </div>
+
+          {/* Polling status */}
+          {partnerPollStatus === 'polling' && (
+            <div className="flex items-center gap-2 px-4 py-3 text-sm text-amber-700 bg-amber-50 border-b border-amber-100">
+              <span className="inline-block animate-spin text-base leading-none">↻</span>
+              Generating your Canadian Tire offer&hellip;
+            </div>
+          )}
+
+          {/* Offer found — display inline */}
+          {partnerPollStatus === 'found' && partnerGeneratedOffer && (
+            <PartnerOfferCard offer={partnerGeneratedOffer} />
+          )}
+
+          {/* Timed out */}
+          {partnerPollStatus === 'timeout' && (
+            <div className="px-4 py-3 text-xs text-gray-500 border-t border-gray-100">
+              Offer generation is taking longer than usual. Check the <strong>Hub</strong> for the generated offer.
+            </div>
+          )}
         </div>
       )}
 
@@ -1082,6 +1163,37 @@ export function ContextDashboard() {
 
       {/* ── Activation history ── */}
       <ActivationFeed memberId={memberId} refreshTrigger={refreshCount} />
+    </div>
+  );
+}
+
+// ── Partner Offer Inline Card ─────────────────────────────────────────────────
+
+function PartnerOfferCard({ offer }: { offer: OfferBrief }) {
+  const pushChannel = offer.channels.find((c) => c.channel_type === 'push');
+  return (
+    <div className="px-4 py-4 bg-white">
+      <div className="flex items-center gap-1.5 mb-2">
+        <span className="material-symbols-outlined text-[16px] text-ct-red" aria-hidden="true">local_offer</span>
+        <p className="text-sm font-semibold text-gray-900">Canadian Tire Offer Generated</p>
+        <span className="badge badge-success capitalize text-[10px]">{offer.status}</span>
+        <code className="text-[10px] text-gray-400 font-mono ml-auto">{offer.offer_id.slice(0, 8)}</code>
+      </div>
+      <p className="text-sm text-gray-700 leading-snug">{offer.objective}</p>
+      <div className="mt-2 flex items-center gap-3">
+        <span className="text-xl font-bold text-ct-red">{offer.construct.value}% off</span>
+        <span className="text-xs text-gray-500">{offer.construct.description}</span>
+      </div>
+      {pushChannel?.message_template && (
+        <p className="mt-2 rounded bg-gray-50 px-3 py-2 text-xs italic leading-snug text-gray-600">
+          &ldquo;{pushChannel.message_template}&rdquo;
+        </p>
+      )}
+      {offer.valid_until && (
+        <p className="mt-1.5 text-[11px] text-gray-400">
+          Valid until {new Date(offer.valid_until).toLocaleString()}
+        </p>
+      )}
     </div>
   );
 }

@@ -218,14 +218,21 @@ async def list_offers(
         _active_statuses = {OfferStatus.draft, OfferStatus.approved, OfferStatus.active}
         seen_objectives: dict[str, OfferBrief] = {}
         expired_offers: list[OfferBrief] = []
-        for o in sorted(offers, key=lambda x: x.created_at, reverse=True):
+        def _sort_key(o: OfferBrief):
+            """Normalize to UTC-aware for comparison regardless of source."""
+            dt = o.created_at
+            if dt is None:
+                return datetime.min.replace(tzinfo=timezone.utc)
+            return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+        for o in sorted(offers, key=_sort_key, reverse=True):
             key = o.objective.lower().strip()
             if o.status not in _active_statuses:
                 expired_offers.append(o)
             elif key not in seen_objectives:
                 seen_objectives[key] = o
         deduped = list(seen_objectives.values()) + expired_offers
-        deduped.sort(key=lambda x: x.created_at, reverse=True)
+        deduped.sort(key=_sort_key, reverse=True)
 
         return ListOffersResponse(offers=deduped, count=len(deduped))
 
@@ -306,6 +313,7 @@ async def update_offer_status(
 
 class UpdateConstructRequest(BaseModel):
     value: float = Field(..., ge=0, le=10000, description="New construct value (e.g. discount %, points multiplier)")
+    objective: str | None = Field(None, min_length=10, max_length=1000, description="Optional: updated objective text reflecting the new construct value")
 
 
 @router.patch(
@@ -332,7 +340,10 @@ async def update_construct_value(
         )
 
     new_construct = offer.construct.model_copy(update={"value": body.value})
-    updated = offer.model_copy(update={"construct": new_construct})
+    update_fields: dict = {"construct": new_construct}
+    if body.objective is not None:
+        update_fields["objective"] = body.objective
+    updated = offer.model_copy(update=update_fields)
     await hub_store.update(updated)
 
     _fire_audit(

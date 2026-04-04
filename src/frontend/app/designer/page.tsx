@@ -19,9 +19,32 @@ async function fetchInventorySuggestions(): Promise<InventorySuggestion[]> {
   }
 }
 
+async function fetchExistingOfferObjectives(): Promise<string[]> {
+  try {
+    const res = await fetch(`${SERVER_API_BASE}/api/hub/offers`, {
+      headers: { Authorization: `Bearer ${process.env.MARKETER_JWT ?? ''}` },
+      next: { revalidate: 0 },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return ((data.offers ?? []) as Array<{ objective: string }>).map((o) => o.objective);
+  } catch {
+    return [];
+  }
+}
+
 async function DesignerContent({ initialObjective }: { initialObjective?: string }) {
-  const suggestions = await fetchInventorySuggestions();
-  return <ModeSelectorTabs suggestions={suggestions} initialObjective={initialObjective} />;
+  const [suggestions, existingObjectives] = await Promise.all([
+    fetchInventorySuggestions(),
+    fetchExistingOfferObjectives(),
+  ]);
+  return (
+    <ModeSelectorTabs
+      suggestions={suggestions}
+      initialObjective={initialObjective}
+      existingObjectives={existingObjectives}
+    />
+  );
 }
 
 export default async function DesignerPage({

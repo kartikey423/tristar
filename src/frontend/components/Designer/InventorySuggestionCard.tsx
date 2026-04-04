@@ -4,7 +4,7 @@ import { prefillObjectiveAction } from '../../app/designer/actions';
 interface InventorySuggestionCardProps {
   suggestion: InventorySuggestion;
   isOffered?: boolean;
-  onOfferGenerated?: (productId: string) => void;
+  onOfferGenerated?: (objective: string) => void;
 }
 
 const URGENCY_STYLES: Record<string, string> = {
@@ -52,7 +52,7 @@ export function InventorySuggestionCard({ suggestion, isOffered = false, onOffer
         &ldquo;{suggestion.suggested_objective}&rdquo;
       </p>
 
-      <form action={prefillObjectiveAction} className="mt-auto" onSubmit={() => onOfferGenerated?.(suggestion.product_id)}>
+      <form action={prefillObjectiveAction} className="mt-auto" onSubmit={() => onOfferGenerated?.(suggestion.suggested_objective)}>
         <input type="hidden" name="objective" value={suggestion.suggested_objective} />
         <button
           type="submit"

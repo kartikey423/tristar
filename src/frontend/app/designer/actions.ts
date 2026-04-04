@@ -116,12 +116,15 @@ export async function rejectOfferAction(
 export async function updateConstructValueAction(
   offerId: string,
   value: number,
+  objective?: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
+    const body: Record<string, unknown> = { value };
+    if (objective !== undefined) body.objective = objective;
     const response = await fetch(`${SERVER_API_BASE}/api/hub/offers/${offerId}/construct`, {
       method: 'PATCH',
       headers: getServiceHeaders(),
-      body: JSON.stringify({ value }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {

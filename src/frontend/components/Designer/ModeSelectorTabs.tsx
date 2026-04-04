@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { InventorySuggestion } from '../../../shared/types/offer-brief';
 import { AISuggestionsPanel } from './AISuggestionsPanel';
 import { ManualEntryForm } from './ManualEntryForm';
@@ -8,6 +8,7 @@ import { ManualEntryForm } from './ManualEntryForm';
 interface ModeSelectorTabsProps {
   suggestions: InventorySuggestion[];
   initialObjective?: string;
+  existingObjectives?: string[];
 }
 
 type Mode = 'ai' | 'manual';
@@ -25,8 +26,37 @@ const TABS: { id: Mode; label: string; description: string }[] = [
   },
 ];
 
-export function ModeSelectorTabs({ suggestions, initialObjective }: ModeSelectorTabsProps) {
+export function ModeSelectorTabs({ suggestions, initialObjective, existingObjectives = [] }: ModeSelectorTabsProps) {
   const [mode, setMode] = useState<Mode>(initialObjective ? 'manual' : 'ai');
+  // Central offered-objectives set — updated instantly when an offer is generated
+  const [offeredObjectives, setOfferedObjectives] = useState<Set<string>>(
+    new Set(existingObjectives),
+  );
+
+  const markOffered = useCallback((objective: string) => {
+    setOfferedObjectives((prev) => new Set(prev).add(objective));
+  }, []);
+
+  // Background sync from Hub — catches offers created elsewhere, recovers from stale state
+  const syncFromHub = useCallback(async () => {
+    try {
+      const res = await fetch('/api/hub-offers', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const objectives: string[] = (data.offers ?? []).map(
+        (o: { objective: string }) => o.objective,
+      );
+      setOfferedObjectives(new Set(objectives));
+    } catch {
+      // Keep existing state on error
+    }
+  }, []);
+
+  useEffect(() => {
+    syncFromHub(); // immediate sync on mount
+    const timer = setInterval(syncFromHub, 10000); // background refresh every 10s
+    return () => clearInterval(timer);
+  }, [syncFromHub]);
 
   return (
     <div className="space-y-6">
@@ -68,7 +98,11 @@ export function ModeSelectorTabs({ suggestions, initialObjective }: ModeSelector
         aria-labelledby="tab-ai"
         hidden={mode !== 'ai'}
       >
-        <AISuggestionsPanel suggestions={suggestions} />
+        <AISuggestionsPanel
+          suggestions={suggestions}
+          offeredObjectives={offeredObjectives}
+          onOfferGenerated={markOffered}
+        />
       </div>
 
       <div
@@ -77,7 +111,10 @@ export function ModeSelectorTabs({ suggestions, initialObjective }: ModeSelector
         aria-labelledby="tab-manual"
         hidden={mode !== 'manual'}
       >
-        <ManualEntryForm initialObjective={initialObjective} />
+        <ManualEntryForm
+          initialObjective={initialObjective}
+          onOfferGenerated={markOffered}
+        />
       </div>
     </div>
   );
