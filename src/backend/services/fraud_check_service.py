@@ -14,7 +14,7 @@ from loguru import logger
 from src.backend.models.offer_brief import FraudCheckResult, OfferBrief, RiskFlags, RiskSeverity
 
 _OVER_DISCOUNT_THRESHOLD = 30.0  # percent — critical above this
-_OFFER_STACK_THRESHOLD = 3       # critical if member has > this many active offers
+_OFFER_STACK_THRESHOLD = 5       # critical if member has > this many active offers (raised from 3)
 _DISCOUNT_TYPES = {"discount", "percentage_off", "percent_off"}
 
 

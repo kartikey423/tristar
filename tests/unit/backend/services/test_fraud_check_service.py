@@ -60,8 +60,8 @@ class TestOfferStacking:
     def test_offer_stacking_above_threshold_is_critical(self):
         service = FraudCheckService()
         offer = make_offer("points_multiplier", 3.0)
-        # Record 3 active offers for member
-        for _ in range(3):
+        # Record 5 active offers for member (threshold raised to 5)
+        for _ in range(5):
             service.record_active_offer("M_STACK")
         result = service.validate(offer, member_id="M_STACK")
         assert result.flags.offer_stacking is True
@@ -71,8 +71,8 @@ class TestOfferStacking:
     def test_offer_stacking_below_threshold_passes(self):
         service = FraudCheckService()
         offer = make_offer("points_multiplier", 3.0)
-        service.record_active_offer("M_LOW")
-        service.record_active_offer("M_LOW")  # 2 active — below threshold of 3
+        for _ in range(4):
+            service.record_active_offer("M_LOW")  # 4 active — below threshold of 5
         result = service.validate(offer, member_id="M_LOW")
         assert result.flags.offer_stacking is False
 

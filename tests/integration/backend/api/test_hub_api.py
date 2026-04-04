@@ -156,6 +156,7 @@ class TestGetOffer:
 @pytest.mark.integration
 class TestListOffers:
     async def test_list_returns_all_offers(self, client, system_token_patch, marketing_token_patch):
+        # Two offers with identical objectives are deduplicated — only 1 returned
         with system_token_patch:
             await client.post("/api/hub/offers", json=marketer_offer(), headers=SYSTEM_HEADERS)
             await client.post("/api/hub/offers", json=marketer_offer(), headers=SYSTEM_HEADERS)
@@ -165,8 +166,9 @@ class TestListOffers:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["count"] == 2
-        assert len(data["offers"]) == 2
+        # Deduplication by objective text collapses duplicates to 1
+        assert data["count"] == 1
+        assert len(data["offers"]) == 1
 
     async def test_filter_by_status(self, client, system_token_patch, marketing_token_patch):
         with system_token_patch:

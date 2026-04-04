@@ -155,8 +155,8 @@ class PartnerTriggerService:
             # Step 1: Classify with Haiku (now with zone + time context)
             category = await self._classify_with_haiku(event, location_zone, time_type)
 
-            # Step 2: Generate OfferBrief using Sonnet
-            offer = await self._generate_offer(event, category)
+            # Step 2: Generate OfferBrief with predictive location + time context
+            offer = await self._generate_offer(event, category, location_zone, time_type)
 
             # Step 3: Fraud check — block if critical
             fraud_result = self._fraud.validate(offer, member_id=event.member_id)
@@ -260,24 +260,99 @@ class PartnerTriggerService:
         except Exception:
             return "seasonal_promotions"
 
-    async def _generate_offer(self, event: PartnerPurchaseEvent, category: str) -> OfferBrief:
-        """Generate a full OfferBrief for the predicted CTC category using Sonnet.
+    # Approximate marketplace premium over CTC regular price, by category
+    _MARKETPLACE_PREMIUM: dict[str, float] = {
+        "outdoor_camping": 1.18,
+        "camping_gear": 1.18,
+        "marine_fishing": 1.15,
+        "automotive_accessories": 1.12,
+        "automotive_cleaning": 1.10,
+        "travel_mugs": 1.20,
+        "kitchen_storage": 1.15,
+        "entertaining_supplies": 1.12,
+        "fitness": 1.15,
+        "sporting_goods": 1.14,
+        "luggage": 1.20,
+        "travel_accessories": 1.18,
+        "seasonal_promotions": 1.10,
+    }
 
-        Builds the offer inline (no Claude API call needed for simple partner offers)
-        to stay within the 2s SLA even for background generation.
+    def _build_predictive_context(
+        self, event: PartnerPurchaseEvent, category: str,
+        location_zone: LocationZone, time_type: "TimeType",
+    ) -> tuple[str, str]:
+        """Return (objective, push_message) enriched with location + time context."""
+        from src.backend.services.canadian_holiday_service import TimeType as TT
+
+        display_category = category.replace("_", " ").title()
+
+        # Product recommendation per zone
+        zone_product: dict[LocationZone, str] = {
+            LocationZone.hill_station: "camping gear, coolers & outdoor equipment",
+            LocationZone.cottage_lakes: "marine accessories, fishing gear & dock equipment",
+            LocationZone.highway: "car emergency kits, motor oil & travel accessories",
+            LocationZone.urban: "home & auto essentials",
+        }
+        product_hint = zone_product.get(location_zone, display_category)
+
+        # Time-based urgency copy
+        time_copy = {
+            TT.long_weekend: "before the long weekend crowds hit — get your gear first",
+            TT.weekend: "this weekend — great time to stock up",
+            TT.weekday: "today — exclusive weekday pricing",
+        }.get(time_type, "today")
+
+        # Marketplace price comparison
+        premium_mult = self._MARKETPLACE_PREMIUM.get(category, 1.12)
+        ctc_price_note = f"~{int((premium_mult - 1) * 100)}% cheaper than Amazon/online marketplace"
+
+        objective = (
+            f"Cross-sell {product_hint} to {event.partner_name} customer"
+            f" ({location_zone.value.replace('_', ' ')} / {time_type.value.replace('_', ' ')})"
+        )
+        message = (
+            f"You just stopped at {event.partner_name}! "
+            f"Canadian Tire has {product_hint} {time_copy}. "
+            f"{ctc_price_note}. Tap to see deals near you."
+        )
+        return objective, message
+
+    async def _generate_offer(
+        self,
+        event: PartnerPurchaseEvent,
+        category: str,
+        location_zone: Optional[LocationZone] = None,
+        time_type: Optional["TimeType"] = None,
+    ) -> OfferBrief:
+        """Generate a full OfferBrief for the predicted CTC category.
+
+        Uses location zone + time type for predictive messaging and marketplace price comparison.
+        Builds inline (no extra Claude call) to stay within the 2s background SLA.
         """
+        from src.backend.services.canadian_holiday_service import TimeType as TT
+
         offer_id = str(uuid.uuid4())
         valid_until = datetime.now(timezone.utc) + timedelta(hours=24)
-
-        # Format category for display
         display_category = category.replace("_", " ").title()
+
+        # Build rich predictive context if zone/time available
+        if location_zone is not None and time_type is not None:
+            objective, push_message = self._build_predictive_context(
+                event, category, location_zone, time_type
+            )
+        else:
+            objective = (
+                f"Cross-sell Canadian Tire {display_category} to member who just visited "
+                f"{event.partner_name}"
+            )
+            push_message = (
+                f"You just visited {event.partner_name}! "
+                f"Get 15% off {display_category} at Canadian Tire. Offer valid 24h."
+            )
 
         return OfferBrief(
             offer_id=offer_id,
-            objective=(
-                f"Cross-sell Canadian Tire {display_category} to member who just visited "
-                f"{event.partner_name}"
-            ),
+            objective=objective,
             segment=Segment(
                 name="partner_triggered_segment",
                 definition=f"Members who made a {event.partner_name} purchase",
@@ -293,10 +368,7 @@ class PartnerTriggerService:
             channels=[Channel(
                 channel_type=ChannelType.push,
                 priority=1,
-                message_template=(
-                    f"You just visited {event.partner_name}! "
-                    f"Get 15% off {display_category} at Canadian Tire. Offer valid 24h."
-                ),
+                message_template=push_message,
             )],
             kpis=KPIs(
                 expected_redemption_rate=0.08,

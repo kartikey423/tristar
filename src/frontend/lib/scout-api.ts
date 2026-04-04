@@ -103,7 +103,7 @@ export interface PartnerPurchaseEvent {
 export interface PartnerTriggerApiResponse {
   status: string;
   message: string;
-  event_id: string;
+  offer_id?: string | null;
 }
 
 /**

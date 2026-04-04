@@ -247,3 +247,75 @@ async def test_regular_weekend_detection(holiday_service):
     """Regular Saturday (non-holiday) should be detected as weekend."""
     time_type = holiday_service.get_time_type(datetime(2026, 6, 13, 10, 0, tzinfo=timezone.utc))  # Saturday
     assert time_type == TimeType.weekend
+
+
+# ─── AC-LOC-06: Tim Hortons Blue Mountain + Long Weekend → Predictive Offer ──
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_tim_hortons_blue_mountain_long_weekend_predictive_offer(
+    partner_service, mock_hub_client
+):
+    """AC-LOC-06: Tim Hortons Blue Mountain + Victoria Day long weekend.
+
+    Verifies:
+    - Offer is generated and saved to Hub as active
+    - Offer objective/message reflects hill_station zone + long_weekend time type
+    - Offer message references camping/outdoor gear or 'long weekend' urgency
+    - Payment split enforces 75/25 Triangle Rewards cap
+    - Marketplace price comparison message is included
+    """
+    # Victoria Day weekend 2026: May 18 (Monday stat holiday), May 16 = Saturday = long weekend
+    event = PartnerPurchaseEvent(
+        event_id="test-bm-victoria-day-2026",
+        partner_id="tim_hortons",
+        partner_name="Tim Hortons - Blue Mountain",
+        purchase_amount=14.75,
+        purchase_category="coffee",
+        member_id="M-test-victoria-001",
+        timestamp=datetime(2026, 5, 16, 9, 0, tzinfo=timezone.utc),  # Saturday of Victoria Day weekend
+        location=GeoPoint(lat=44.5, lon=-80.3),  # Blue Mountain coordinates
+        store_name="Tim Hortons - Blue Mountain",
+    )
+
+    result = await partner_service.classify_and_generate(event)
+
+    # Offer must be generated
+    assert result is not None, "Predictive offer should be generated for long weekend at hill station"
+    assert result.status == OfferStatus.active
+    assert result.trigger_type.value == "partner_triggered"
+    assert result.valid_until is not None
+
+    # Payment split must enforce 75/25 rule
+    assert result.construct.payment_split is not None, "payment_split must be set on partner-triggered offers"
+    assert result.construct.payment_split.points_max_pct == 75.0, "Triangle points cap must be 75%"
+    assert result.construct.payment_split.cash_min_pct == 25.0, "Minimum cash must be 25%"
+
+    # Predictive messaging must reflect hill_station + long_weekend context
+    objective_lower = result.objective.lower()
+    message = result.channels[0].message_template or ""
+    message_lower = message.lower()
+    combined = objective_lower + " " + message_lower
+
+    assert (
+        "camping" in combined
+        or "outdoor" in combined
+        or "hill" in combined
+        or "mountain" in combined
+    ), f"Offer should reference outdoor/camping context for Blue Mountain. Got: {result.objective}"
+
+    assert (
+        "long weekend" in combined
+        or "weekend" in combined
+        or "cheaper" in combined
+        or "%" in combined
+    ), f"Offer message should include urgency or price comparison. Got: {message}"
+
+    # Offer discount must stay below fraud threshold (≤ 30%)
+    assert result.construct.value <= 30.0, "Partner-triggered offer must not over-discount"
+
+    # Must be saved to Hub
+    mock_hub_client.save_offer.assert_called_once()
+    saved_offer: OfferBrief = mock_hub_client.save_offer.call_args[0][0]
+    assert saved_offer.offer_id == result.offer_id

@@ -106,7 +106,9 @@ async def generate_offer_brief(
             detail="Claude returned an unparseable response. Please retry.",
         )
 
-    fraud_result = fraud.validate(offer, member_id=user.user_id)
+    # Offer stacking check is for loyalty members only — pass empty member_id so
+    # it never triggers for marketer-initiated offers (marketers create many offers).
+    fraud_result = fraud.validate(offer, member_id="")
 
     # Attach fraud flags to the offer
     offer = offer.model_copy(update={"risk_flags": fraud_result.flags})
@@ -259,8 +261,6 @@ async def approve_offer(
             detail="Hub store unavailable",
         )
 
-    # Update active offer stacking count for fraud detection
-    fraud.record_active_offer(member_id=user.user_id)
     audit.log_approval(approved_offer, approved_by=user.user_id)
 
     return ApproveOfferResponse(
@@ -292,13 +292,21 @@ async def get_inventory_suggestions(
     # Exclude products already in Hub (any non-expired status) — prevents duplicates in Designer feed
     try:
         hub_offers = await hub_store.list()
+        _active = {OfferStatus.draft, OfferStatus.approved, OfferStatus.active}
+        active_hub_offers = [o for o in hub_offers if o.status in _active]
+
         offered_deal_ids: set[str] = {
-            o.source_deal_id for o in hub_offers
+            o.source_deal_id for o in active_hub_offers
             if o.source_deal_id is not None
-            and o.status in {OfferStatus.draft, OfferStatus.approved, OfferStatus.active}
         }
-        if offered_deal_ids:
-            suggestions = [s for s in suggestions if s.product_id not in offered_deal_ids]
+        # Also match by normalised objective text to catch manually-entered duplicates
+        hub_objectives: set[str] = {o.objective.lower().strip() for o in active_hub_offers}
+
+        suggestions = [
+            s for s in suggestions
+            if s.product_id not in offered_deal_ids
+            and s.suggested_objective.lower().strip() not in hub_objectives
+        ]
     except Exception:
         # Hub exclusion is best-effort — never fail the suggestions endpoint
         pass
@@ -320,9 +328,10 @@ async def get_inventory_suggestions(
     },
 )
 async def get_live_deals(
-    limit: int = 5,
+    limit: int = 10,
     user: AuthUser = Depends(require_marketing_role),
     deal_scraper: DealScraperService = Depends(get_deal_scraper_service),
+    hub_store: HubStore = Depends(get_hub_store),
 ) -> list[DealSuggestion]:
     """Fetch live deals from Canadian Tire to sync with Designer offers.
 
@@ -330,6 +339,7 @@ async def get_live_deals(
     - Scrapes 3 sources: weekly deals, flyer, clearance
     - Cached for 15 minutes to avoid rate limiting
     - Returns top deals sorted by discount percentage
+    - Filters out deals already in Hub (draft/approved/active) to prevent duplicates
 
     Rate Limiting:
     - 1 request per minute (enforced by internal cache)
@@ -337,15 +347,32 @@ async def get_live_deals(
     """
     try:
         deals = await deal_scraper.fetch_deals()
-        if deals:
-            return deals[:min(limit, 20)]
-
-        # Scraper returned empty (Canadian Tire blocked or no deals found) — return demo deals
-        logger.warning("Live scraper returned 0 deals, serving demo fallback data")
-        return _demo_deals()[:min(limit, 20)]
+        if not deals:
+            logger.warning("Live scraper returned 0 deals, serving demo fallback data")
+            deals = _demo_deals()
     except Exception as e:
         logger.error(f"Failed to fetch live deals: {e}")
-        return _demo_deals()[:min(limit, 20)]
+        deals = _demo_deals()
+
+    # Exclude deals already present in Hub (prevents "Generate Offer" on already-active items)
+    try:
+        hub_offers = await hub_store.list()
+        _active = {OfferStatus.draft, OfferStatus.approved, OfferStatus.active}
+        active_hub_offers = [o for o in hub_offers if o.status in _active]
+        hub_deal_ids: set[str] = {
+            o.source_deal_id for o in active_hub_offers if o.source_deal_id is not None
+        }
+        hub_objectives: set[str] = {o.objective.lower().strip() for o in active_hub_offers}
+        deals = [
+            d for d in deals
+            if d.deal_id not in hub_deal_ids
+            and d.suggested_objective.lower().strip() not in hub_objectives
+        ]
+    except Exception:
+        # Hub exclusion is best-effort — never fail the live-deals endpoint
+        pass
+
+    return deals[:min(limit, 20)]
 
 
 def _demo_deals() -> list[DealSuggestion]:
@@ -363,6 +390,16 @@ def _demo_deals() -> list[DealSuggestion]:
         ("Workpro 130-Piece Mechanics Set", "tools", 38, 159.99, 99.99, "weekly_deals"),
         ("Weber Q1200 Portable Gas BBQ", "outdoor", 22, 349.99, 272.99, "flyer"),
         ("Toro 60V Cordless Lawn Mower", "outdoor", 28, 499.99, 359.99, "clearance"),
+        ("Mastercraft 18V Cordless Circular Saw", "tools", 33, 129.99, 86.99, "weekly_deals"),
+        ("Coleman 4-Burner Propane Stove", "outdoor", 30, 89.99, 62.99, "flyer"),
+        ("Duracell AA Batteries 20-Pack", "home", 25, 24.99, 18.74, "clearance"),
+        ("Castrol EDGE 5W-30 Motor Oil 5L", "automotive", 20, 39.99, 31.99, "weekly_deals"),
+        ("Stanley FatMax 25ft Tape Measure 3-Pack", "tools", 35, 44.99, 29.24, "clearance"),
+        ("Igloo MaxCold 52-Qt Cooler", "outdoor", 28, 79.99, 57.59, "flyer"),
+        ("Noma Smart Outdoor LED Floodlight", "home", 22, 59.99, 46.79, "weekly_deals"),
+        ("MotoMaster 1000W Power Inverter", "automotive", 32, 99.99, 67.99, "clearance"),
+        ("Greenworks 40V Cordless String Trimmer", "outdoor", 25, 149.99, 112.49, "flyer"),
+        ("Shark AI Robot Vacuum RV2310WD", "home", 40, 499.99, 299.99, "clearance"),
     ]
     import hashlib
 

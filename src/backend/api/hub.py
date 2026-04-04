@@ -20,12 +20,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from src.backend.api.deps import get_hub_audit_service, get_hub_store
+from src.backend.api.deps import get_hub_audit_service, get_hub_store, get_redemption_enforcement_service
 from src.backend.core.config import settings
 from src.backend.core.security import AuthUser, get_current_user, require_marketing_or_system_role, require_system_role
 from src.backend.models.offer_brief import AUTO_ACTIVE_TRIGGER_TYPES, OfferBrief, OfferStatus, TriggerType
+from src.backend.models.partner_event import RedemptionRequest, RedemptionSplitError
 from src.backend.services.hub_audit_service import HubAuditEvent, HubAuditService
 from src.backend.services.hub_store import HubStore, InMemoryHubStore, OfferAlreadyExistsError, RedisUnavailableError
+from src.backend.services.redemption_enforcement_service import RedemptionEnforcementService
 
 router = APIRouter()
 
@@ -211,7 +213,21 @@ async def list_offers(
         # Note: member_id filtering requires storing member associations on OfferBrief.
         # F-002: This endpoint stub satisfies the interface contract.
 
-        return ListOffersResponse(offers=offers, count=len(offers))
+        # Deduplicate by normalised objective text: for identical objectives, keep the most
+        # recent non-expired offer so the Hub list stays clean.
+        _active_statuses = {OfferStatus.draft, OfferStatus.approved, OfferStatus.active}
+        seen_objectives: dict[str, OfferBrief] = {}
+        expired_offers: list[OfferBrief] = []
+        for o in sorted(offers, key=lambda x: x.created_at, reverse=True):
+            key = o.objective.lower().strip()
+            if o.status not in _active_statuses:
+                expired_offers.append(o)
+            elif key not in seen_objectives:
+                seen_objectives[key] = o
+        deduped = list(seen_objectives.values()) + expired_offers
+        deduped.sort(key=lambda x: x.created_at, reverse=True)
+
+        return ListOffersResponse(offers=deduped, count=len(deduped))
 
     finally:
         elapsed_ms = (time.monotonic() - t0) * 1000
@@ -364,6 +380,62 @@ async def reject_offer(
                 actor_id=_user.user_id,
             )
         )
+    )
+
+
+class RedemptionResponse(BaseModel):
+    offer_id: str
+    points_pct: float
+    cash_pct: float
+    message: str
+
+
+@router.post(
+    "/offers/{offer_id}/redeem",
+    response_model=RedemptionResponse,
+    summary="Validate a Triangle Rewards redemption against the offer's 75/25 payment split",
+    description=(
+        "Enforces that Triangle points cannot exceed 75% of the transaction. "
+        "The remaining 25%+ must be paid via credit/debit card. "
+        "Returns 422 if points_pct exceeds the offer's payment_split.points_max_pct."
+    ),
+    responses={
+        200: {"description": "Payment split is valid"},
+        404: {"description": "Offer not found"},
+        422: {"description": "Points redemption exceeds 75% cap"},
+    },
+)
+async def redeem_offer(
+    offer_id: str,
+    redemption: RedemptionRequest,
+    _user: AuthUser = Depends(get_current_user),
+    hub_store: HubStore = Depends(get_hub_store),
+    enforcement: RedemptionEnforcementService = Depends(get_redemption_enforcement_service),
+) -> RedemptionResponse:
+    """Enforce 75/25 Triangle Rewards payment split constraint before redemption."""
+    offer = await hub_store.get(offer_id)
+    if offer is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Offer {offer_id} not found")
+
+    try:
+        enforcement.validate_payment_split(offer, redemption)
+    except RedemptionSplitError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "RedemptionSplitError",
+                "message": str(e),
+                "points_pct": e.points_pct,
+                "max_points_pct": e.max_pct,
+                "required_cash_pct": 100 - e.max_pct,
+            },
+        )
+
+    return RedemptionResponse(
+        offer_id=offer_id,
+        points_pct=redemption.points_pct,
+        cash_pct=redemption.cash_pct,
+        message=f"Payment split valid: {redemption.points_pct:.0f}% points / {redemption.cash_pct:.0f}% cash.",
     )
 
 
