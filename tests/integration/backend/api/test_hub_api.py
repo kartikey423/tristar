@@ -146,9 +146,10 @@ class TestGetOffer:
 
         assert response.status_code == 404
 
-    async def test_get_requires_auth(self, client):
-        response = await client.get("/api/hub/offers/some-id")
-        assert response.status_code == 401
+    async def test_get_missing_returns_404_no_auth_needed(self, client):
+        # Auth removed from GET /offers/{id} in develop — endpoint is now public read-only
+        response = await client.get("/api/hub/offers/nonexistent-id-xyz")
+        assert response.status_code == 404
 
 
 # ─── GET /api/hub/offers ─────────────────────────────────────────────────────
@@ -220,9 +221,10 @@ class TestListOffers:
         assert data["count"] == 0
         assert data["offers"] == []
 
-    async def test_list_requires_auth(self, client):
+    async def test_list_no_auth_returns_200(self, client):
+        # Auth removed from GET /offers in develop — endpoint is now public read-only
         response = await client.get("/api/hub/offers")
-        assert response.status_code == 401
+        assert response.status_code == 200
 
 
 # ─── PUT /api/hub/offers/{offer_id}/status ───────────────────────────────────
