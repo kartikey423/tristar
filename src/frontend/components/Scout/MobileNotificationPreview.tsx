@@ -205,12 +205,9 @@ export function MobileNotificationPreview({
   const partnerBasePrice = PARTNER_PRODUCT_PRICES[partnerProductName] ?? 99.99;
   const partnerDiscountPct = partnerGeneratedOffer?.construct?.value ?? 15;
   const partnerOfferPrice = partnerBasePrice * (1 - partnerDiscountPct / 100);
-  const partnerMaxPoints = partnerOfferPrice * 0.75;
-  // Cap rewards at the customer's actual balance (can't redeem more than they have)
-  const partnerRewardsAvailable = totalRewardsPoints * 0.01;
-  const partnerActualRedeem = Math.min(partnerMaxPoints, partnerRewardsAvailable);
-  const partnerMinCard = partnerOfferPrice * 0.25;
-  const partnerNetPay = Math.max(partnerMinCard, partnerOfferPrice - partnerActualRedeem);
+  const partnerActualRedeem = partnerOfferPrice * 0.75; // max 75% of offer price
+  const partnerMinCard = partnerOfferPrice * 0.25;      // min 25% by card
+  const partnerNetPay = partnerMinCard;
 
   // Build notification text for CTC match
   const notifTitle = hasMatch
@@ -235,7 +232,7 @@ export function MobileNotificationPreview({
     ?? partnerGeneratedOffer?.objective
     ?? `Exclusive Canadian Tire offer from your visit to ${partnerBrandName ?? 'our partner'}!`;
   const partnerNotifBody = partnerGeneratedOffer
-    ? `${partnerProductName} at ${partnerDiscountPct}% off — use up to $${partnerActualRedeem.toFixed(2)} in Triangle Rewards. Pay just $${partnerNetPay.toFixed(2)}.`
+    ? `${partnerProductName} at ${partnerDiscountPct}% off — use up to $${partnerActualRedeem.toFixed(2)} in Triangle Rewards (75%). You pay min $${partnerNetPay.toFixed(2)}.`
     : `Check out an exclusive Canadian Tire offer nearby. ${partnerDiscountPct}% off — pay with Triangle Points!`;
 
   return (

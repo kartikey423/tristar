@@ -1426,10 +1426,8 @@ function PushNotificationCard({
             const baseP = PARTNER_PRODUCT_PRICES[pName] ?? 99.99;
             const dPct = partnerGeneratedOffer.construct.value ?? 15;
             const offerP = baseP * (1 - dPct / 100);
-            const maxPts = offerP * 0.75;
-            const availBalance = totalRewardsPoints * 0.01;
-            const actualRedeem = Math.min(maxPts, availBalance);
-            const youPay = Math.max(offerP * 0.25, offerP - actualRedeem);
+            const actualRedeem = offerP * 0.75; // max 75% of offer price
+            const youPay = offerP * 0.25;       // min 25% by card
             return (
               <div className="space-y-1 text-[12px]">
                 <div className="flex justify-between">
