@@ -147,7 +147,7 @@ export function MobileNotificationPreview({
   const hasMatch = isMatchResponse(result);
 
   // ── Customer notification accept state ──────────────────────────────────────
-  type AcceptState = 'idle' | 'loading' | 'accepted' | 'error';
+  type AcceptState = 'idle' | 'viewing' | 'loading' | 'accepted' | 'error';
   const [acceptState, setAcceptState] = useState<AcceptState>('idle');
   const [acceptMsg, setAcceptMsg] = useState('');
 
@@ -301,7 +301,7 @@ export function MobileNotificationPreview({
                 title={notifTitle}
                 body={notifBody}
                 actionLabel={acceptState === 'loading' ? 'Activating…' : acceptState === 'accepted' ? '✓ Activated!' : 'View Offer →'}
-                onActionClick={acceptState === 'idle' ? handleAccept : undefined}
+                onActionClick={acceptState === 'idle' ? () => setAcceptState('viewing') : undefined}
               />
             )}
 
@@ -370,7 +370,7 @@ export function MobileNotificationPreview({
                 title="Exclusive offer near you!"
                 body={partnerNotifBody}
                 actionLabel={acceptState === 'loading' ? 'Activating…' : acceptState === 'accepted' ? '✓ Activated!' : 'View Offer →'}
-                onActionClick={acceptState === 'idle' ? handleAccept : undefined}
+                onActionClick={acceptState === 'idle' ? () => setAcceptState('viewing') : undefined}
               />
             )}
 
@@ -395,19 +395,134 @@ export function MobileNotificationPreview({
           {/* Swipe hint */}
           <SwipeHint />
 
-          {/* ── Accepted overlay — full screen "offer activated" confirmation ── */}
+          {/* ── Offer detail screen — shown when user taps "View Offer →" ── */}
+          {acceptState === 'viewing' && (
+            <div className="absolute inset-0 flex flex-col bg-[#0f1c2e] z-30 rounded-[44px] overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center px-5 pt-14 pb-3 border-b border-white/10">
+                <button
+                  onClick={() => setAcceptState('idle')}
+                  className="text-blue-300 text-[13px] font-medium flex items-center gap-1"
+                >
+                  ← Back
+                </button>
+                <p className="flex-1 text-center text-white text-[14px] font-semibold">Offer Details</p>
+                <div className="w-12" />
+              </div>
+
+              {/* Scrollable offer content */}
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                {/* CT branding */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-[12px] bg-[#E4003A] flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-[11px] font-bold">CT</span>
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-[14px]">Canadian Tire</p>
+                    <p className="text-white/50 text-[11px]">Triangle Rewards</p>
+                  </div>
+                  <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold">
+                    {partnerGeneratedOffer ? 'Active' : 'Exclusive'}
+                  </span>
+                </div>
+
+                {/* Offer objective */}
+                <p className="text-white/90 text-[13px] leading-snug">
+                  {partnerGeneratedOffer ? partnerGeneratedOffer.objective : notifBody}
+                </p>
+
+                {/* Discount highlight */}
+                {partnerGeneratedOffer && (
+                  <div className="rounded-2xl bg-white/10 px-4 py-3">
+                    <p className="text-[#E4003A] text-[32px] font-extrabold leading-none">
+                      {partnerGeneratedOffer.construct.value}% off
+                    </p>
+                    <p className="text-white/60 text-[12px] mt-1">
+                      {partnerGeneratedOffer.construct.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Payment breakdown (partner offer) */}
+                {partnerGeneratedOffer && (
+                  <div className="rounded-2xl bg-white/10 px-4 py-3 space-y-2">
+                    <p className="text-white/70 text-[11px] font-semibold uppercase tracking-wide mb-2">
+                      How to pay with Triangle Rewards
+                    </p>
+                    <div className="flex justify-between text-[12px]">
+                      <span className="text-white/55">Savings on your CTC purchase</span>
+                      <span className="text-white">-${partnerOfferValue.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-[12px]">
+                      <span className="text-white/55">Triangle Points (max 75%)</span>
+                      <span className="text-emerald-400">up to -${partnerMaxPoints.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-[12px]">
+                      <span className="text-white/55">Card (min 25%)</span>
+                      <span className="text-white">min ${partnerMinCard.toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-white/20 pt-2 flex justify-between">
+                      <span className="text-white font-semibold text-[13px]">You pay (estimated)</span>
+                      <span className="text-white font-bold text-[15px]">${partnerNetPay.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Score for CTC match */}
+                {!partnerGeneratedOffer && isMatchResponse(result) && (
+                  <div className="rounded-2xl bg-white/10 px-4 py-3 flex items-center justify-between">
+                    <span className="text-white/60 text-[12px]">Confidence score</span>
+                    <span className="text-emerald-400 font-bold text-[14px]">{result.score}/100</span>
+                  </div>
+                )}
+
+                {/* Valid until */}
+                {partnerGeneratedOffer?.valid_until && (
+                  <p className="text-white/35 text-[11px] text-center">
+                    Valid until {new Date(partnerGeneratedOffer.valid_until).toLocaleString()}
+                  </p>
+                )}
+              </div>
+
+              {/* Avail Offer CTA */}
+              <div className="px-5 pb-10 pt-3">
+                <button
+                  onClick={handleAccept}
+                  className="w-full bg-[#E4003A] text-white font-bold text-[15px] py-3.5 rounded-2xl active:opacity-80 transition-opacity"
+                >
+                  Avail Offer
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Loading overlay ── */}
+          {acceptState === 'loading' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-30 rounded-[44px]">
+              <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin mb-4" />
+              <p className="text-white text-[14px] font-medium">Activating offer…</p>
+            </div>
+          )}
+
+          {/* ── Accepted overlay — "Offer Active" confirmation ── */}
           {acceptState === 'accepted' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-30 rounded-[44px] px-6 text-center">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 backdrop-blur-sm z-30 rounded-[44px] px-6 text-center">
               <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center mb-4 shadow-lg">
                 <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <p className="text-white text-[18px] font-bold mb-1">Offer Activated!</p>
-              <p className="text-white/80 text-[13px] leading-snug">{acceptMsg}</p>
-              <div className="mt-4 rounded-full bg-white/20 px-4 py-1.5">
-                <p className="text-white/70 text-[11px]">Check the Hub tab to see your active offer</p>
+              <p className="text-white text-[20px] font-bold mb-1">Offer Active!</p>
+              <p className="text-white/75 text-[13px] leading-snug mb-4">{acceptMsg}</p>
+              <div className="rounded-xl bg-white/15 px-4 py-2 mb-4">
+                <p className="text-white/70 text-[11px]">Check the Hub tab to see your active deal</p>
               </div>
+              <button
+                onClick={() => setAcceptState('idle')}
+                className="mt-1 text-blue-300 text-[13px] font-medium underline"
+              >
+                Back to main screen
+              </button>
             </div>
           )}
 
@@ -416,6 +531,12 @@ export function MobileNotificationPreview({
             <div className="absolute bottom-20 left-3 right-3 z-30 rounded-2xl bg-red-500/90 backdrop-blur-sm px-4 py-3 text-center">
               <p className="text-white text-[12px] font-semibold">Could not activate offer</p>
               <p className="text-white/80 text-[11px] mt-0.5">{acceptMsg}</p>
+              <button
+                onClick={() => setAcceptState('idle')}
+                className="mt-2 text-white/70 text-[11px] underline"
+              >
+                Back
+              </button>
             </div>
           )}
 
