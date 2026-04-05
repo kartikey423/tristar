@@ -206,8 +206,11 @@ export function MobileNotificationPreview({
   const partnerDiscountPct = partnerGeneratedOffer?.construct?.value ?? 15;
   const partnerOfferPrice = partnerBasePrice * (1 - partnerDiscountPct / 100);
   const partnerMaxPoints = partnerOfferPrice * 0.75;
+  // Cap rewards at the customer's actual balance (can't redeem more than they have)
+  const partnerRewardsAvailable = totalRewardsPoints * 0.01;
+  const partnerActualRedeem = Math.min(partnerMaxPoints, partnerRewardsAvailable);
   const partnerMinCard = partnerOfferPrice * 0.25;
-  const partnerNetPay = partnerMinCard;
+  const partnerNetPay = Math.max(partnerMinCard, partnerOfferPrice - partnerActualRedeem);
 
   // Build notification text for CTC match
   const notifTitle = hasMatch
@@ -232,7 +235,7 @@ export function MobileNotificationPreview({
     ?? partnerGeneratedOffer?.objective
     ?? `Exclusive Canadian Tire offer from your visit to ${partnerBrandName ?? 'our partner'}!`;
   const partnerNotifBody = partnerGeneratedOffer
-    ? `${partnerBaseMsg} Use up to $${partnerMaxPoints.toFixed(2)} in Triangle Points (75%) — pay min $${partnerMinCard.toFixed(2)} by card. Est. you pay: $${partnerNetPay.toFixed(2)}.`
+    ? `${partnerProductName} at ${partnerDiscountPct}% off — use up to $${partnerActualRedeem.toFixed(2)} in Triangle Rewards. Pay just $${partnerNetPay.toFixed(2)}.`
     : `Check out an exclusive Canadian Tire offer nearby. ${partnerDiscountPct}% off — pay with Triangle Points!`;
 
   return (
@@ -494,7 +497,7 @@ export function MobileNotificationPreview({
                     </div>
                     <div className="flex justify-between text-[12px]">
                       <span className="text-emerald-400/90">Rewards (max 75%)</span>
-                      <span className="text-emerald-400">-${partnerMaxPoints.toFixed(2)}</span>
+                      <span className="text-emerald-400">-${partnerActualRedeem.toFixed(2)}</span>
                     </div>
                     <div className="border-t border-white/20 pt-2 flex justify-between">
                       <span className="text-white font-semibold text-[13px]">You pay (min 25%)</span>

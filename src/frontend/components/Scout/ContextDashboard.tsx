@@ -1227,6 +1227,8 @@ export function ContextDashboard() {
               memberFirstName={member.firstName}
               occasion={occasion}
               result={result}
+              isPartnerTrigger={isPartnerTrigger}
+              partnerGeneratedOffer={partnerGeneratedOffer}
             />
           </div>
         </div>
@@ -1335,6 +1337,8 @@ interface PushNotificationCardProps {
   memberId: string;
   memberFirstName: string;
   occasion: string | null;
+  isPartnerTrigger?: boolean;
+  partnerGeneratedOffer?: OfferBrief | null;
   result: ScoutMatchResult;
 }
 
@@ -1354,6 +1358,8 @@ function PushNotificationCard({
   memberFirstName,
   occasion,
   result,
+  isPartnerTrigger = false,
+  partnerGeneratedOffer,
 }: PushNotificationCardProps) {
   const storeItems = STORE_INVENTORY[storeId] ?? STORE_ITEMS[storeBrand];
   const purchasedItem: StoreItem = {
@@ -1401,26 +1407,75 @@ function PushNotificationCard({
         <span className="ml-auto text-red-200 text-xs">now</span>
       </div>
 
-      {/* Transaction receipt */}
-      <div className="px-4 py-3 border-b border-gray-100">
-        <p className="text-xs text-gray-400 mb-1">Purchase recorded at {storeName}</p>
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-900">{itemName}</p>
-            <p className="text-sm text-gray-500 mt-0.5">${purchaseAmount.toFixed(2)}</p>
+      {/* Transaction receipt — show partner offer when triggered, otherwise show purchase receipt */}
+      {isPartnerTrigger && partnerGeneratedOffer ? (
+        <div className="px-4 py-3 border-b border-gray-100">
+          <p className="text-xs text-gray-400 mb-2">
+            Cross-sell triggered by your visit to {storeName}
+          </p>
+          {/* Partner offer headline */}
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-xl font-bold text-ct-red">{partnerGeneratedOffer.construct.value}% off</span>
+            <span className="text-sm font-semibold text-gray-800">
+              {partnerGeneratedOffer.construct.description.replace(/^15% off /, '').replace(/ at Canadian Tire$/, '')}
+            </span>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-400">Points earned</p>
-            <p className="text-lg font-bold text-green-700">+{pointsEarned.toLocaleString()}</p>
-            <p className="text-xs text-green-500">
-              ~${(pointsEarned * 0.01).toFixed(2)} value · Triangle Points™
-            </p>
-            <p className="mt-1 text-xs text-gray-500">
-              Total balance: {totalRewardsPoints.toLocaleString()} pts (${totalRewardsValue.toFixed(2)})
-            </p>
+          {/* Price breakdown inline */}
+          {(() => {
+            const pName = partnerGeneratedOffer.construct.description.replace(/^15% off /, '').replace(/ at Canadian Tire$/, '');
+            const baseP = PARTNER_PRODUCT_PRICES[pName] ?? 99.99;
+            const dPct = partnerGeneratedOffer.construct.value ?? 15;
+            const offerP = baseP * (1 - dPct / 100);
+            const maxPts = offerP * 0.75;
+            const availBalance = totalRewardsPoints * 0.01;
+            const actualRedeem = Math.min(maxPts, availBalance);
+            const youPay = Math.max(offerP * 0.25, offerP - actualRedeem);
+            return (
+              <div className="space-y-1 text-[12px]">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Original</span>
+                  <span className="text-gray-400 line-through">${baseP.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Offer price</span>
+                  <span className="font-semibold text-gray-800">${offerP.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-green-700">Rewards (max 75%)</span>
+                  <span className="text-green-700">−${actualRedeem.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-100 pt-1 mt-0.5">
+                  <span className="font-bold text-gray-800">You pay (min 25%)</span>
+                  <span className="font-bold text-gray-900">${youPay.toFixed(2)}</span>
+                </div>
+              </div>
+            );
+          })()}
+          <p className="text-[10px] text-gray-400 mt-2">
+            Points balance: {totalRewardsPoints.toLocaleString()} pts (${totalRewardsValue.toFixed(2)}) · Valid 24h
+          </p>
+        </div>
+      ) : (
+        <div className="px-4 py-3 border-b border-gray-100">
+          <p className="text-xs text-gray-400 mb-1">Purchase recorded at {storeName}</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-900">{itemName}</p>
+              <p className="text-sm text-gray-500 mt-0.5">${purchaseAmount.toFixed(2)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-400">Points earned</p>
+              <p className="text-lg font-bold text-green-700">+{pointsEarned.toLocaleString()}</p>
+              <p className="text-xs text-green-500">
+                ~${(pointsEarned * 0.01).toFixed(2)} value · Triangle Points™
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Total balance: {totalRewardsPoints.toLocaleString()} pts (${totalRewardsValue.toFixed(2)})
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── Smart Recommendation — combines personalized offer + AI next-item ── */}
       {hasMatch && (
