@@ -205,11 +205,15 @@ export function MobileNotificationPreview({
         : `Exclusive offer for you, ${memberFirstName}!`
     : 'Triangle Rewards Update';
 
-  const notifBody = hasMatch && result.notification_text
-    ? result.notification_text
-    : hasMatch
-      ? `You just earned ${pointsEarned.toLocaleString()} points at ${storeName}. Balance: ${totalRewardsPoints.toLocaleString()} pts ($${rewardsValue}).`
-      : result.message ?? 'No matching offer right now.';
+  // Prefer personalized recommendation message; fall back to backend notification_text
+  const notifBody = recommendationMsg
+    ?? (recommendedItem
+      ? `Best offer for you: ${recommendedItem.name} at ${recommendedItem.discountPct}% off — pay just $${recommendedItem.youPay.toFixed(2)} after Triangle Rewards.`
+      : hasMatch && result.notification_text
+        ? result.notification_text
+        : hasMatch
+          ? `You just earned ${pointsEarned.toLocaleString()} points at ${storeName}. Balance: ${totalRewardsPoints.toLocaleString()} pts ($${rewardsValue}).`
+          : result.message ?? 'No matching offer right now.');
 
   // Partner cross-sell notification body — includes payment split
   const pushChannel = partnerGeneratedOffer?.channels?.find((c) => c.channel_type === 'push');
