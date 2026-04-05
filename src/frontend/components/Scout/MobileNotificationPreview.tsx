@@ -191,12 +191,23 @@ export function MobileNotificationPreview({
   }, [hasMatch, result, partnerGeneratedOffer]);
   const rewardsValue = (totalRewardsPoints * 0.01).toFixed(2);
 
-  // 75/25 Triangle Rewards rule for partner-generated offer
+  // Realistic CTC retail prices per partner zone product
+  const PARTNER_PRODUCT_PRICES: Record<string, number> = {
+    'Winter Tires': 249.99,
+    'Marine Accessories': 89.99,
+    'Car Emergency Kit': 59.99,
+    'Home & Auto Essentials': 49.99,
+  };
+
+  // 75/25 Triangle Rewards rule for partner-generated offer — use product price, not partner purchase amount
+  const partnerProductName = partnerGeneratedOffer?.construct?.description
+    ?.replace(/^15% off /, '')?.replace(/ at Canadian Tire$/, '') ?? '';
+  const partnerBasePrice = PARTNER_PRODUCT_PRICES[partnerProductName] ?? 99.99;
   const partnerDiscountPct = partnerGeneratedOffer?.construct?.value ?? 15;
-  const partnerOfferValue = purchaseAmount * (partnerDiscountPct / 100);
-  const partnerMaxPoints = partnerOfferValue * 0.75;
-  const partnerMinCard = partnerOfferValue * 0.25;
-  const partnerNetPay = purchaseAmount - partnerMaxPoints;
+  const partnerOfferPrice = partnerBasePrice * (1 - partnerDiscountPct / 100);
+  const partnerMaxPoints = partnerOfferPrice * 0.75;
+  const partnerMinCard = partnerOfferPrice * 0.25;
+  const partnerNetPay = partnerMinCard;
 
   // Build notification text for CTC match
   const notifTitle = hasMatch
@@ -467,27 +478,27 @@ export function MobileNotificationPreview({
                   </div>
                 )}
 
-                {/* Payment breakdown (partner offer) */}
+                {/* Payment breakdown (partner offer) — matches CTC price breakdown style */}
                 {partnerGeneratedOffer && (
                   <div className="rounded-2xl bg-white/10 px-4 py-3 space-y-2">
                     <p className="text-white/70 text-[11px] font-semibold uppercase tracking-wide mb-2">
-                      How to pay with Triangle Rewards
+                      Price Breakdown
                     </p>
                     <div className="flex justify-between text-[12px]">
-                      <span className="text-white/55">Savings on your CTC purchase</span>
-                      <span className="text-white">-${partnerOfferValue.toFixed(2)}</span>
+                      <span className="text-white/55">Original</span>
+                      <span className="text-white/50 line-through">${partnerBasePrice.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-[12px]">
-                      <span className="text-white/55">Triangle Points (max 75%)</span>
-                      <span className="text-emerald-400">up to -${partnerMaxPoints.toFixed(2)}</span>
+                      <span className="text-white/55">Offer price</span>
+                      <span className="text-white font-semibold">${partnerOfferPrice.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-[12px]">
-                      <span className="text-white/55">Card (min 25%)</span>
-                      <span className="text-white">min ${partnerMinCard.toFixed(2)}</span>
+                      <span className="text-emerald-400/90">Rewards (max 75%)</span>
+                      <span className="text-emerald-400">-${partnerMaxPoints.toFixed(2)}</span>
                     </div>
                     <div className="border-t border-white/20 pt-2 flex justify-between">
-                      <span className="text-white font-semibold text-[13px]">You pay (estimated)</span>
-                      <span className="text-white font-bold text-[15px]">${partnerNetPay.toFixed(2)}</span>
+                      <span className="text-white font-semibold text-[13px]">You pay (min 25%)</span>
+                      <span className="text-white font-bold text-[16px]">${partnerNetPay.toFixed(2)}</span>
                     </div>
                   </div>
                 )}

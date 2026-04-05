@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { SidebarNav } from '../components/Shell/SidebarNav';
 
 export const metadata: Metadata = {
-  title: 'TriStar — Triangle Smart Targeting',
+  title: 'TriStar — Canadian Tire Triangle Rewards',
   description: 'Real-time loyalty offer activation engine — Canadian Tire Corporation',
+  icons: { icon: '/icon.svg' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

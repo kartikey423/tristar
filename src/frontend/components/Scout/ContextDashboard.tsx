@@ -1240,17 +1240,25 @@ export function ContextDashboard() {
 
 // ── Partner Offer Inline Card ─────────────────────────────────────────────────
 
-function PartnerOfferCard({ offer, purchaseAmount }: { offer: OfferBrief; purchaseAmount?: number }) {
+const PARTNER_PRODUCT_PRICES: Record<string, number> = {
+  'Winter Tires': 249.99,
+  'Marine Accessories': 89.99,
+  'Car Emergency Kit': 59.99,
+  'Home & Auto Essentials': 49.99,
+};
+
+function PartnerOfferCard({ offer }: { offer: OfferBrief; purchaseAmount?: number }) {
   const pushChannel = offer.channels.find((c) => c.channel_type === 'push');
 
-  // Payment split calculation — 75/25 Triangle Rewards rule
+  // Payment split — use realistic product price, not the partner store purchase amount
+  const productName = offer.construct.description
+    .replace(/^15% off /, '').replace(/ at Canadian Tire$/, '');
+  const basePrice = PARTNER_PRODUCT_PRICES[productName] ?? 99.99;
   const discountPct = offer.construct.value ?? 15;
-  // Use purchase amount for savings context; fallback to a representative $50 if not provided
-  const baseAmount = purchaseAmount ?? 50;
-  const offerValue = baseAmount * (discountPct / 100);
-  const maxPoints = offerValue * 0.75;
-  const minCard = offerValue * 0.25;
-  const netYouPay = baseAmount - maxPoints; // base - max points redeemable toward this offer
+  const offerPrice = basePrice * (1 - discountPct / 100);
+  const maxPoints = offerPrice * 0.75;
+  const minCard = offerPrice * 0.25;
+  const netYouPay = minCard;
 
   return (
     <div className="px-4 py-4 bg-white">
@@ -1275,29 +1283,29 @@ function PartnerOfferCard({ offer, purchaseAmount }: { offer: OfferBrief; purcha
         </p>
       )}
 
-      {/* 75/25 Payment breakdown */}
+      {/* Price breakdown — matches CTC phone preview style */}
       <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-2.5 space-y-1">
         <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-          How to pay with Triangle Rewards
+          Price Breakdown
         </p>
         <div className="flex items-center justify-between text-[12px]">
-          <span className="text-gray-600">Savings on <span className="font-medium text-gray-800">{offer.construct.description.replace('15% off ', '').replace(' at Canadian Tire', '')}</span></span>
-          <span className="font-semibold text-gray-800">−${offerValue.toFixed(2)}</span>
+          <span className="text-gray-500">Original</span>
+          <span className="text-gray-400 line-through">${basePrice.toFixed(2)}</span>
         </div>
         <div className="flex items-center justify-between text-[12px]">
-          <span className="text-green-700">Triangle Points (max 75%)</span>
-          <span className="font-medium text-green-700">up to −${maxPoints.toFixed(2)}</span>
+          <span className="text-gray-600">Offer price</span>
+          <span className="font-semibold text-gray-800">${offerPrice.toFixed(2)}</span>
         </div>
         <div className="flex items-center justify-between text-[12px]">
-          <span className="text-gray-500">Card (min 25%)</span>
-          <span className="text-gray-500">min ${minCard.toFixed(2)}</span>
+          <span className="text-green-700">Rewards (max 75%)</span>
+          <span className="font-medium text-green-700">−${maxPoints.toFixed(2)}</span>
         </div>
         <div className="flex items-center justify-between text-[12px] border-t border-emerald-100 pt-1.5 mt-0.5">
-          <span className="font-bold text-emerald-800">You pay (estimated)</span>
+          <span className="font-bold text-emerald-800">You pay (min 25%)</span>
           <span className="text-base font-bold text-emerald-800">${netYouPay.toFixed(2)}</span>
         </div>
         <p className="text-[10px] text-gray-400 mt-0.5">
-          Price calculated for <span className="font-medium">{offer.construct.description.replace('15% off ', '').replace(' at Canadian Tire', '')}</span> · Based on ${baseAmount.toFixed(2)} spend · Min 25% by card per Triangle Rewards rules.
+          Price for <span className="font-medium">{productName}</span> · Min 25% by card per Triangle Rewards rules.
         </p>
       </div>
 
