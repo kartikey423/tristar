@@ -116,6 +116,18 @@ function SwipeHint() {
 
 // ── Main export ────────────────────────────────────────────────────────────────
 
+export interface RecommendedItem {
+  name: string;
+  originalPrice: number;
+  offerPrice: number;
+  discountPct: number;
+  confidence: number;
+  reason: string;
+  rewardsRedeemable: number;
+  youPay: number;
+  totalPointsAfter: number;
+}
+
 interface MobileNotificationPreviewProps {
   memberFirstName: string;
   storeName: string;
@@ -128,6 +140,9 @@ interface MobileNotificationPreviewProps {
   isPartnerTrigger?: boolean;
   partnerBrandName?: string;
   partnerGeneratedOffer?: OfferBrief | null;
+  // For CTC match offer details screen
+  recommendationMsg?: string;
+  recommendedItem?: RecommendedItem | null;
 }
 
 export function MobileNotificationPreview({
@@ -141,6 +156,8 @@ export function MobileNotificationPreview({
   isPartnerTrigger = false,
   partnerBrandName,
   partnerGeneratedOffer,
+  recommendationMsg,
+  recommendedItem,
 }: MobileNotificationPreviewProps) {
   const time = useLiveTime();
   const lockDate = formatLockDate();
@@ -426,9 +443,11 @@ export function MobileNotificationPreview({
                   </span>
                 </div>
 
-                {/* Offer objective */}
+                {/* Offer objective / personalized message */}
                 <p className="text-white/90 text-[13px] leading-snug">
-                  {partnerGeneratedOffer ? partnerGeneratedOffer.objective : notifBody}
+                  {partnerGeneratedOffer
+                    ? partnerGeneratedOffer.objective
+                    : (recommendationMsg ?? notifBody)}
                 </p>
 
                 {/* Discount highlight */}
@@ -468,8 +487,57 @@ export function MobileNotificationPreview({
                   </div>
                 )}
 
-                {/* Score for CTC match */}
-                {!partnerGeneratedOffer && isMatchResponse(result) && (
+                {/* CTC match — recommended item with price breakdown */}
+                {!partnerGeneratedOffer && recommendedItem && (
+                  <>
+                    {/* Discount badge */}
+                    <div className="rounded-2xl bg-white/10 px-4 py-3">
+                      <p className="text-[#E4003A] text-[30px] font-extrabold leading-none">
+                        {recommendedItem.discountPct}% off
+                      </p>
+                      <p className="text-white/60 text-[12px] mt-1">
+                        {recommendedItem.name}
+                      </p>
+                    </div>
+
+                    {/* Price breakdown */}
+                    <div className="rounded-2xl bg-white/10 px-4 py-3 space-y-2">
+                      <p className="text-white/70 text-[11px] font-semibold uppercase tracking-wide mb-2">
+                        Price breakdown
+                      </p>
+                      <div className="flex justify-between text-[12px]">
+                        <span className="text-white/55">Original</span>
+                        <span className="text-white/50 line-through">${recommendedItem.originalPrice.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-[12px]">
+                        <span className="text-white/55">Offer price</span>
+                        <span className="text-white font-semibold">${recommendedItem.offerPrice.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-[12px]">
+                        <span className="text-emerald-400/90">Rewards (max 75%)</span>
+                        <span className="text-emerald-400">-${recommendedItem.rewardsRedeemable.toFixed(2)}</span>
+                      </div>
+                      <div className="border-t border-white/20 pt-2 flex justify-between">
+                        <span className="text-white font-semibold text-[13px]">You pay (min 25%)</span>
+                        <span className="text-white font-bold text-[16px]">${recommendedItem.youPay.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    {/* Points + confidence */}
+                    <div className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <svg viewBox="0 0 20 20" fill="#E4003A" className="w-3.5 h-3.5"><polygon points="10,2 18,17 2,17" /></svg>
+                        <span className="text-white/70 text-[11px]">{recommendedItem.totalPointsAfter.toLocaleString()} pts total</span>
+                      </div>
+                      <span className="text-emerald-400 font-semibold text-[12px]">{recommendedItem.confidence}/100 match</span>
+                    </div>
+
+                    <p className="text-white/40 text-[11px] text-center">{recommendedItem.reason}</p>
+                  </>
+                )}
+
+                {/* Fallback score if no recommended item */}
+                {!partnerGeneratedOffer && !recommendedItem && isMatchResponse(result) && (
                   <div className="rounded-2xl bg-white/10 px-4 py-3 flex items-center justify-between">
                     <span className="text-white/60 text-[12px]">Confidence score</span>
                     <span className="text-emerald-400 font-bold text-[14px]">{result.score}/100</span>

@@ -17,6 +17,7 @@ import { callScoutMatch, callPartnerTrigger, isMatchResponse } from '@/lib/scout
 import type { OfferBrief } from '../../../shared/types/offer-brief';
 import { ActivationFeed } from './ActivationFeed';
 import { MobileNotificationPreview } from './MobileNotificationPreview';
+import type { RecommendedItem } from './MobileNotificationPreview';
 
 // ── Store fixtures ─────────────────────────────────────────────────────────────
 
@@ -891,6 +892,51 @@ export function ContextDashboard() {
     }
   }
 
+  // Compute recommended item for phone preview (mirrors PushNotificationCard logic)
+  const _phoneStoreItems = purchaseSummary
+    ? (STORE_INVENTORY[purchaseSummary.store.id] ?? STORE_ITEMS[purchaseSummary.store.brand])
+    : null;
+  const _phonePurchasedItem = purchaseSummary
+    ? { name: purchaseSummary.item.name, price: purchaseSummary.item.price, category: purchaseSummary.item.category }
+    : null;
+  const _phoneNextBest = (_phoneStoreItems && _phonePurchasedItem && purchaseSummary)
+    ? predictNextBestItem(purchaseSummary.memberId, _phoneStoreItems, _phonePurchasedItem)
+    : null;
+  const _phoneOfferPrice = _phoneNextBest
+    ? _phoneNextBest.item.price * (1 - _phoneNextBest.predictedDiscountPct / 100)
+    : null;
+  const _phoneMaxRedeem = _phoneOfferPrice != null ? _phoneOfferPrice * 0.75 : null;
+  const _phoneRewardsVal = purchaseSummary ? purchaseSummary.totalRewardsPoints * 0.01 : 0;
+  const _phoneRedeem = _phoneOfferPrice != null && _phoneMaxRedeem != null
+    ? Math.min(_phoneRewardsVal, _phoneMaxRedeem)
+    : null;
+  const _phoneYouPay = _phoneOfferPrice != null && _phoneRedeem != null
+    ? Math.max(_phoneOfferPrice * 0.25, _phoneOfferPrice - _phoneRedeem)
+    : null;
+  const recommendedItemForPhone: RecommendedItem | null =
+    (_phoneNextBest && _phoneOfferPrice != null && _phoneRedeem != null && _phoneYouPay != null && purchaseSummary)
+      ? {
+          name: _phoneNextBest.item.name,
+          originalPrice: _phoneNextBest.item.price,
+          offerPrice: _phoneOfferPrice,
+          discountPct: _phoneNextBest.predictedDiscountPct,
+          confidence: _phoneNextBest.confidence,
+          reason: _phoneNextBest.reason,
+          rewardsRedeemable: _phoneRedeem,
+          youPay: _phoneYouPay,
+          totalPointsAfter: purchaseSummary.totalRewardsPoints,
+        }
+      : null;
+  const recommendationMsgForPhone = (purchaseSummary && result && isMatchResponse(result))
+    ? generatePersonalizedMessage(
+        member.firstName,
+        purchaseSummary.item.name,
+        occasion,
+        _phoneNextBest?.item.name ?? null,
+        _phoneNextBest?.predictedDiscountPct ?? null,
+      )
+    : undefined;
+
   return (
     <div className="space-y-6">
       {/* ── Purchase event form ── */}
@@ -1158,6 +1204,8 @@ export function ContextDashboard() {
               isPartnerTrigger={isPartnerTrigger}
               partnerBrandName={isPartnerTrigger ? purchaseSummary.store.name : undefined}
               partnerGeneratedOffer={partnerGeneratedOffer}
+              recommendationMsg={recommendationMsgForPhone}
+              recommendedItem={recommendedItemForPhone}
             />
           </div>
 
