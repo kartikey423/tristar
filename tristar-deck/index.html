@@ -263,12 +263,15 @@
   <div class="lp">
     <div class="lp-logo">
       <div class="lp-logo-icons">
-        <svg width="16" height="14" viewBox="0 0 16 14"><polygon points="1,2 15,2 8,12" fill="#d12026"/></svg>
-        <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
-          <path d="M21 3 L27 15 L39 15 L29 23 L33 35 L21 28 L9 35 L13 23 L3 15 L15 15 Z"
-                stroke="#00b9c6" stroke-width="1.5" stroke-linejoin="round"/>
-          <path d="M21 10 L24 17 L31 17 L26 21 L28 28 L21 24 L14 28 L16 21 L11 17 L18 17 Z"
-                fill="#00b9c6" opacity="0.2"/>
+        <svg width="54" height="52" viewBox="0 0 56 54" xmlns="http://www.w3.org/2000/svg">
+          <!-- Red inverted triangle -->
+          <polygon points="3,22 53,22 28,52" fill="#CC2B1D"/>
+          <!-- Green maple leaf with white border — top lobes above triangle, lower body inside -->
+          <path d="M28,2 L25.5,7.5 L20,5.5 L22.5,10.5 L16,13 L21,15.5 L18,21.5 L23.5,19.5 L22.5,25.5 L28,23 L33.5,25.5 L32.5,19.5 L38,21.5 L35,15.5 L40,13 L33.5,10.5 L36,5.5 L30.5,7.5 Z"
+                fill="#2d7a2d" stroke="white" stroke-width="2.4" stroke-linejoin="round"/>
+          <!-- Stem inside triangle -->
+          <line x1="28" y1="25.5" x2="28" y2="31" stroke="white" stroke-width="3"/>
+          <line x1="28" y1="25.5" x2="28" y2="31" stroke="#2d7a2d" stroke-width="1.6"/>
         </svg>
       </div>
       <h1 class="lp-title">Team Details<br>&amp; Artefact links</h1>
@@ -349,7 +352,20 @@
       <div class="artifact-label" style="margin-top:14px;">
         Artifact links <em>(Garage / ppt and solution demo location)</em>:
       </div>
-      <div class="box-dashed" style="margin-top:5px;">&lt;&lt;Add Artifact links here&gt;&gt;</div>
+      <div class="box-dashed" style="margin-top:5px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;">
+            <path d="M6 2H2a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V9" stroke="#d12026" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M10 1h5v5M15 1L8 8" stroke="#d12026" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <a href="https://git.garage.epam.com/kartikey_puri/tristar/-/tree/develop?ref_type=heads"
+             target="_blank"
+             style="font-size:.75rem;color:#0369a1;text-decoration:none;font-weight:600;word-break:break-all;font-style:normal;">
+            git.garage.epam.com/kartikey_puri/tristar/-/tree/develop
+          </a>
+        </div>
+        <div style="font-size:.65rem;color:#888;margin-top:4px;font-style:italic;">EPAM Garage · develop branch</div>
+      </div>
 
     </div>
     <div class="rp-foot">
@@ -387,14 +403,15 @@
   <div class="lp">
     <div class="lp-logo">
       <div class="lp-logo-icons">
-        <svg width="16" height="14" viewBox="0 0 16 14"><polygon points="1,2 15,2 8,12" fill="#d12026"/></svg>
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-          <path d="M14 31 C14 25 10 22 10 15 C10 8 14 3 20 3 C26 3 30 8 30 15 C30 22 26 25 26 31"
-                stroke="#00b9c6" stroke-width="1.6" stroke-linecap="round"/>
-          <line x1="14" y1="33" x2="26" y2="33" stroke="#00b9c6" stroke-width="1.5"/>
-          <line x1="15.5" y1="36" x2="24.5" y2="36" stroke="#00b9c6" stroke-width="1.5"/>
-          <polyline points="18,11 16,17 20,17 17,24" stroke="#00b9c6" stroke-width="1.5"
-                    stroke-linecap="round" stroke-linejoin="round"/>
+        <svg width="54" height="52" viewBox="0 0 56 54" xmlns="http://www.w3.org/2000/svg">
+          <!-- Red inverted triangle -->
+          <polygon points="3,22 53,22 28,52" fill="#CC2B1D"/>
+          <!-- Green maple leaf with white border — top lobes above triangle, lower body inside -->
+          <path d="M28,2 L25.5,7.5 L20,5.5 L22.5,10.5 L16,13 L21,15.5 L18,21.5 L23.5,19.5 L22.5,25.5 L28,23 L33.5,25.5 L32.5,19.5 L38,21.5 L35,15.5 L40,13 L33.5,10.5 L36,5.5 L30.5,7.5 Z"
+                fill="#2d7a2d" stroke="white" stroke-width="2.4" stroke-linejoin="round"/>
+          <!-- Stem inside triangle -->
+          <line x1="28" y1="25.5" x2="28" y2="31" stroke="white" stroke-width="3"/>
+          <line x1="28" y1="25.5" x2="28" y2="31" stroke="#2d7a2d" stroke-width="1.6"/>
         </svg>
       </div>
       <h1 class="lp-title">Problem<br>Statement</h1>
@@ -592,177 +609,9 @@
 </div><!-- /slide 2 -->
 
 
-<!-- ═══════════════════════════════════════════════════════════
-     SLIDE 3 — Solution Architecture Overview
-     ═══════════════════════════════════════════════════════════ -->
-<div class="slide">
-
-  <!-- LEFT DARK PANEL — Designer Layer + Hub -->
-  <div class="lp">
-    <div class="lp-logo">
-      <div class="lp-logo-icons">
-        <svg width="16" height="14" viewBox="0 0 16 14"><polygon points="1,2 15,2 8,12" fill="#d12026"/></svg>
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-          <rect x="4" y="4" width="32" height="32" rx="4" stroke="#00b9c6" stroke-width="1.5"/>
-          <line x1="4" y1="14" x2="36" y2="14" stroke="#00b9c6" stroke-width="1" opacity=".6"/>
-          <line x1="20" y1="14" x2="20" y2="36" stroke="#00b9c6" stroke-width="1" opacity=".6"/>
-          <circle cx="12" cy="9" r="2" fill="#d12026" opacity=".8"/>
-          <circle cx="20" cy="9" r="2" fill="#00b9c6" opacity=".8"/>
-          <circle cx="28" cy="9" r="2" fill="#00b9c6" opacity=".4"/>
-        </svg>
-      </div>
-      <h1 class="lp-title">Solution<br>Architecture</h1>
-    </div>
-
-    <div class="lp-body" style="overflow:hidden;">
-
-      <!-- Designer Section -->
-      <div class="sa-lbl">Layer 1 — Designer</div>
-      <div class="sa-inputs">
-        <div class="sa-in">Business<br>Objective</div>
-        <div class="sa-in">Inventory<br>Suggestion</div>
-        <div class="sa-in">Live Deal<br>Scraper</div>
-      </div>
-      <div class="sa-varr">↓ &nbsp; ↓ &nbsp; ↓</div>
-      <div class="sa-claude-box">🤖 Claude API · claude-sonnet-4-6</div>
-      <div class="sa-varr">↓</div>
-      <div class="sa-vnode sa-vn-proc">Offer Generator</div>
-      <div class="sa-varr">↓</div>
-      <div class="sa-vnode sa-vn-out">OfferBrief Output</div>
-      <div class="sa-varr">↓</div>
-      <div class="sa-vnode sa-vn-fraud">◇ Fraud Detection &nbsp;·&nbsp; <span style="font-size:.5rem;font-weight:400;">over_discounting · stacking · cannibalization · frequency</span></div>
-      <div class="sa-varr" style="font-size:.52rem;color:#777;">Pass ↙ &nbsp;&nbsp;&nbsp;&nbsp; Fail ↘</div>
-      <div class="sa-split">
-        <div class="sa-spl-p">✓ Save to Hub<br>status: draft</div>
-        <div class="sa-spl-f">✗ Fraud Alert<br>critical → block</div>
-      </div>
-
-      <!-- Hub Section -->
-      <div class="sa-hub">
-        <div class="sa-hub-head">🗄 The Hub — Shared Context State</div>
-        <div class="sa-hub-item">Offer Store · Redis / In-Memory</div>
-        <div class="sa-hub-item">Status Engine: draft → approved → active → expired</div>
-        <div class="sa-hub-item">Audit Log · SQLite · Append-Only</div>
-        <div class="sa-hub-item">Background Expiry Sweep · every 300s</div>
-      </div>
-
-    </div>
-
-    <div class="lp-brand">&lt;epam&gt;</div>
-  </div>
-
-  <!-- RIGHT WHITE PANEL — Scout Flows + Output -->
-  <div class="rp">
-    <div class="rp-head">
-      <div class="rp-icon">
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <circle cx="16" cy="16" r="13" stroke="#555" stroke-width="1.4"/>
-          <line x1="16" y1="3"  x2="16" y2="29" stroke="#555" stroke-width="1" opacity=".35"/>
-          <line x1="3"  y1="16" x2="29" y2="16" stroke="#555" stroke-width="1" opacity=".35"/>
-          <circle cx="16" cy="16" r="3" fill="#555" opacity=".5"/>
-          <path d="M16 3 L19 10 L16 7 L13 10 Z" fill="#555" opacity=".6"/>
-        </svg>
-      </div>
-      <span class="rp-title">Scout — Real-Time Activation Engine</span>
-    </div>
-
-    <div class="rp-body">
-
-      <div class="sa-flows">
-
-        <!-- Flow A: Purchase Event -->
-        <div class="sa-flow sa-fa">
-          <div class="sa-flow-badge">Flow A</div>
-          <div class="sa-flow-ttl">Purchase Event</div>
-          <div class="sa-fn">POST /scout/purchase-event<br>HMAC-signed webhook</div>
-          <div class="sa-farr">↓</div>
-          <div class="sa-fn">Deterministic Scorer<br>7 factors · threshold ≥ 70</div>
-          <div class="sa-farr">↓</div>
-          <div class="sa-fn">Designer: generate-purchase<br>service JWT · internal call</div>
-        </div>
-
-        <!-- Flow B: Hub Match -->
-        <div class="sa-flow sa-fb">
-          <div class="sa-flow-badge">Flow B</div>
-          <div class="sa-flow-ttl">Hub Match</div>
-          <div class="sa-fn">POST /scout/match<br>purchase context</div>
-          <div class="sa-farr">↓</div>
-          <div class="sa-fn">Claude AI Scorer<br>+ deterministic fallback &gt; 60</div>
-          <div class="sa-farr">↓</div>
-          <div class="sa-fn">DeliveryConstraint<br>CASL · rate-limit · dedup · quiet-hrs</div>
-        </div>
-
-        <!-- Flow C: Partner Trigger -->
-        <div class="sa-flow sa-fc">
-          <div class="sa-flow-badge">Flow C</div>
-          <div class="sa-flow-ttl">Partner Trigger</div>
-          <div class="sa-fn">POST /scout/partner-trigger<br>HMAC-signed webhook</div>
-          <div class="sa-farr">↓</div>
-          <div class="sa-fn">Claude Haiku<br>classification + location + time</div>
-          <div class="sa-farr">↓</div>
-          <div class="sa-fn">OfferBrief active<br>valid 24h → Hub</div>
-        </div>
-
-        <!-- Flow D: Customer Self-Activation -->
-        <div class="sa-flow sa-fd">
-          <div class="sa-flow-badge">Flow D</div>
-          <div class="sa-flow-ttl">Self-Activation</div>
-          <div class="sa-fn">Customer taps notification<br>View → Avail Offer</div>
-          <div class="sa-farr">↓</div>
-          <div class="sa-fn">POST /hub/offers/{id}/<br>customer-accept JWT</div>
-          <div class="sa-farr">↓</div>
-          <div class="sa-fn">Auto-approve + activate<br>no marketer action needed</div>
-        </div>
-
-      </div><!-- /sa-flows -->
-
-      <!-- Output row -->
-      <div class="sa-out">
-        <div class="sa-out-b sa-out-notif">
-          <div class="sa-out-icon">📱</div>
-          <div class="sa-out-txt">Push Notification<br>Member App</div>
-        </div>
-        <div class="sa-out-sep">·</div>
-        <div class="sa-out-b sa-out-q">
-          <div class="sa-out-icon">⏰</div>
-          <div class="sa-out-txt">Queue for Later<br>next 8am window</div>
-        </div>
-        <div class="sa-out-sep">→</div>
-        <div class="sa-out-b sa-out-log">
-          <div class="sa-out-icon">📋</div>
-          <div class="sa-out-txt">Activation Log<br>ScoutAuditService</div>
-        </div>
-      </div>
-
-    </div>
-    <div class="rp-foot">
-      <span class="conf-text">CONFIDENTIAL. Copyright ©</span>
-      <span class="pg-num">3</span>
-    </div>
-  </div>
-
-  <!-- PRESENTER NOTES — Slide 3 -->
-  <div class="p-notes" id="notes-3-sa">
-    <div class="p-notes-bar">
-      <span class="p-notes-ttl">🎤 Presenter Notes — Slide 3: Solution Architecture</span>
-      <span class="p-notes-hint">Press <kbd style="background:#222;border:1px solid #444;border-radius:3px;padding:0 4px;font-size:.75em;color:#ccc;">P</kbd> to toggle</span>
-      <span class="p-notes-close" onclick="this.closest('.p-notes').classList.remove('show')">✕ Close</span>
-    </div>
-    <div class="p-notes-grid">
-      <div class="p-note"><strong>Designer layer:</strong> A marketer enters plain English — Claude Sonnet 4.6 synthesises it with live inventory and deal data to produce a fully structured OfferBrief JSON in under 2 seconds. Schema validated by Pydantic v2 before every state transition.</div>
-      <div class="p-note"><strong>Fraud Detection:</strong> Four patterns run automatically before any offer is saved — over-discounting (&gt;30%), offer stacking (2+ high-value in 7 days), frequency abuse (&lt;24h gap), cannibalization (overlapping active offers). Critical severity hard-blocks the offer.</div>
-      <div class="p-note"><strong>The Hub:</strong> Schema-gated lifecycle — nothing moves from draft to approved without passing all validations. The SQLite audit log is append-only and immutable. The background sweep expires stale offers every 5 minutes.</div>
-      <div class="p-note"><strong>Scout Flow A &amp; B:</strong> Purchase events hit a deterministic scorer (7 signals, threshold 70). Hub matches use Claude AI Scorer (threshold 60) plus DeliveryConstraint checks — CASL consent, 1/hr rate limit, 24h dedup, 10pm–8am quiet hours.</div>
-      <div class="p-note"><strong>Scout Flow C &amp; D:</strong> Partner HMAC webhooks are classified by Claude Haiku — lightweight and fast — then auto-create 24h OfferBriefs stored in Hub. Customer self-activation allows members to avail offers on demand with no marketer approval step.</div>
-      <div class="p-note"><strong>Output:</strong> Activated offers fire push notifications immediately. Offers that miss the delivery window are queued for the next 8am opening. Every event writes to ScoutAuditService for analytics, compliance, and reactivation loop learning.</div>
-    </div>
-  </div>
-
-</div><!-- /slide 3 -->
-
 
 <!-- ═══════════════════════════════════════════════════════════
-     SLIDE 4 — Benefits  |  Future Enhancements
+     SLIDE 3 — Benefits  |  Future Enhancements
      ═══════════════════════════════════════════════════════════ -->
 <div class="slide">
 
@@ -770,9 +619,15 @@
   <div class="lp">
     <div class="lp-logo">
       <div class="lp-logo-icons">
-        <svg width="16" height="14" viewBox="0 0 16 14"><polygon points="1,2 15,2 8,12" fill="#d12026"/></svg>
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-          <polyline points="5,20 14,29 35,9" stroke="#00b9c6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg width="54" height="52" viewBox="0 0 56 54" xmlns="http://www.w3.org/2000/svg">
+          <!-- Red inverted triangle -->
+          <polygon points="3,22 53,22 28,52" fill="#CC2B1D"/>
+          <!-- Green maple leaf with white border — top lobes above triangle, lower body inside -->
+          <path d="M28,2 L25.5,7.5 L20,5.5 L22.5,10.5 L16,13 L21,15.5 L18,21.5 L23.5,19.5 L22.5,25.5 L28,23 L33.5,25.5 L32.5,19.5 L38,21.5 L35,15.5 L40,13 L33.5,10.5 L36,5.5 L30.5,7.5 Z"
+                fill="#2d7a2d" stroke="white" stroke-width="2.4" stroke-linejoin="round"/>
+          <!-- Stem inside triangle -->
+          <line x1="28" y1="25.5" x2="28" y2="31" stroke="white" stroke-width="3"/>
+          <line x1="28" y1="25.5" x2="28" y2="31" stroke="#2d7a2d" stroke-width="1.6"/>
         </svg>
       </div>
       <h1 class="lp-title">Benefits</h1>
@@ -914,7 +769,7 @@
     </div>
     <div class="rp-foot">
       <span class="conf-text">CONFIDENTIAL. Copyright ©</span>
-      <span class="pg-num">4</span>
+      <span class="pg-num">3</span>
     </div>
   </div>
 
