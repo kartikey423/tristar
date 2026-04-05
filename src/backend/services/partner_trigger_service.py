@@ -298,7 +298,7 @@ class PartnerTriggerService:
             LocationZone.hill_station: "Winter Tires",
             LocationZone.cottage_lakes: "Marine Accessories",
             LocationZone.highway: "Car Emergency Kit",
-            LocationZone.urban: "Home & Auto Essentials",
+            LocationZone.urban: "Power Drill Kit",
         }
         product_hint = zone_product.get(location_zone, display_category)
 

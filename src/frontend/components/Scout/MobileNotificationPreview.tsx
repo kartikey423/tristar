@@ -196,7 +196,7 @@ export function MobileNotificationPreview({
     'Winter Tires': 249.99,
     'Marine Accessories': 89.99,
     'Car Emergency Kit': 59.99,
-    'Home & Auto Essentials': 49.99,
+    'Power Drill Kit': 79.99,
   };
 
   // 75/25 Triangle Rewards rule for partner-generated offer — use product price, not partner purchase amount

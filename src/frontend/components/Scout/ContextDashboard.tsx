@@ -1246,7 +1246,7 @@ const PARTNER_PRODUCT_PRICES: Record<string, number> = {
   'Winter Tires': 249.99,
   'Marine Accessories': 89.99,
   'Car Emergency Kit': 59.99,
-  'Home & Auto Essentials': 49.99,
+  'Power Drill Kit': 79.99,
 };
 
 function PartnerOfferCard({ offer }: { offer: OfferBrief; purchaseAmount?: number }) {
