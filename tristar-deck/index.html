@@ -185,6 +185,16 @@
 }
 .tristar-tagline strong { color:#1a1a1a; }
 
+/* ── Representative row ──────────────────────────────────── */
+.rep-row {
+  display:flex; align-items:center; gap:10px;
+  background:#f0f9ff; border:1px solid #bae6fd;
+  border-radius:9px; padding:8px 14px; margin-bottom:12px;
+}
+.rep-icon { color:#0284c7; flex-shrink:0; display:flex; align-items:center; }
+.rep-label { font-size:.72rem; font-weight:700; color:#374151; width:88px; flex-shrink:0; letter-spacing:.01em; }
+.rep-names { font-size:.8rem; color:#0369a1; font-style:italic; font-weight:600; }
+
 /* ── Team slide redesign ─────────────────────────────────── */
 .team-hero {
   display:flex; align-items:center; gap:14px;
@@ -457,6 +467,18 @@
           <div class="team-hero-sub">EPAM HACKATHON 2026 · LOYALTY AI PLATFORM</div>
         </div>
         <div class="team-hero-badge">Team</div>
+      </div>
+
+      <!-- Representative -->
+      <div class="rep-row">
+        <div class="rep-icon">
+          <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+            <circle cx="11" cy="7" r="4" stroke="#0284c7" stroke-width="1.6"/>
+            <path d="M3 20 C3 15 6 13 11 13 C16 13 19 15 19 20" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="rep-label">Representative:</span>
+        <span class="rep-names">Ram Naresh, Kartikey Puri</span>
       </div>
 
       <!-- Team Members Grid -->

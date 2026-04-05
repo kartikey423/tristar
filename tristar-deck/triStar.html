@@ -139,22 +139,88 @@ html, body { width: 100%; height: 100vh; overflow: hidden; font-family: 'Inter',
 .rbullets li::before { content: '•'; position: absolute; left: 0; color: var(--text); }
 .rbullets li strong  { color: var(--text); }
 
-/* ── Team Details slide ──────────────────────────────────── */
-.team-row   { display: flex; align-items: center; gap: 16px; margin: 8px 0 14px; }
-.team-label { font-size: 0.86rem; font-weight: 700; color: var(--text); width: 108px; flex-shrink: 0; }
-.irow       { display: flex; align-items: center; gap: 12px; margin: 10px 0 4px; }
-.ibox {
-  width: 44px; height: 44px; background: var(--gray-box2);
-  border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+/* ── Team Details slide — redesigned ────────────────────── */
+.rep-row {
+  display:flex; align-items:center; gap:10px;
+  background:#f0f9ff; border:1px solid #bae6fd;
+  border-radius:9px; padding:8px 14px; margin-bottom:12px;
 }
-.irow-label { font-size: 0.84rem; font-weight: 500; color: var(--text); }
-.members-box {
-  background: var(--gray-box); border-radius: var(--r-lg);
-  padding: 12px 18px; margin-left: 56px; min-height: 80px;
-  font-size: 0.84rem; color: var(--text); line-height: 2.1;
+.rep-icon { color:#0284c7; flex-shrink:0; display:flex; align-items:center; }
+.rep-label { font-size:.72rem; font-weight:700; color:#374151; width:88px; flex-shrink:0; letter-spacing:.01em; }
+.rep-names { font-size:.8rem; color:#0369a1; font-style:italic; font-weight:600; }
+
+.team-hero {
+  display:flex; align-items:center; gap:14px;
+  background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);
+  border-radius:14px; padding:14px 18px; margin-bottom:12px;
+  border:1px solid rgba(0,185,198,.25);
 }
-.artifact-label { font-size: 0.82rem; color: var(--text); margin: 18px 0 6px; }
-.artifact-label em { color: var(--text-dim); font-style: italic; }
+.team-hero-icon {
+  width:52px; height:52px; border-radius:12px; flex-shrink:0;
+  background:linear-gradient(135deg,rgba(0,185,198,.25),rgba(139,92,246,.25));
+  border:1.5px solid rgba(0,185,198,.4);
+  display:flex; align-items:center; justify-content:center; font-size:1.6rem;
+}
+.team-hero-name { font-size:1.6rem; font-weight:900; color:#fff; letter-spacing:-.02em; line-height:1.1; }
+.team-hero-sub  { font-size:.72rem; color:#94a3b8; margin-top:3px; letter-spacing:.02em; }
+.team-hero-badge {
+  margin-left:auto; background:rgba(0,185,198,.15); border:1px solid rgba(0,185,198,.35);
+  border-radius:20px; padding:3px 10px; font-size:.6rem; font-weight:700;
+  color:#67e8f9; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap;
+}
+.members-section-label {
+  font-size:.7rem; font-weight:700; color:#94a3b8; letter-spacing:.08em;
+  text-transform:uppercase; margin-bottom:8px;
+}
+.members-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+.member-card {
+  display:flex; align-items:center; gap:10px;
+  border-radius:11px; padding:10px 12px;
+  border:1px solid; transition:transform .2s;
+}
+.member-card:hover { transform:translateY(-1px); }
+.mc-lead { background:rgba(0,185,198,.06); border-color:rgba(0,185,198,.25); }
+.mc-team { background:rgba(139,92,246,.05); border-color:rgba(139,92,246,.2); }
+.mc-avatar {
+  width:36px; height:36px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.75rem; font-weight:800; color:#fff; line-height:1;
+}
+.av-rn { background:linear-gradient(135deg,#0ea5e9,#0284c7); }
+.av-kp { background:linear-gradient(135deg,#00b9c6,#0891b2); }
+.av-ms { background:linear-gradient(135deg,#8b5cf6,#6d28d9); }
+.av-rs { background:linear-gradient(135deg,#a78bfa,#7c3aed); }
+.mc-name { font-size:.8rem; font-weight:700; color:#1a1a1a; line-height:1.2; }
+.mc-role { font-size:.62rem; color:#888; margin-top:1px; }
+.mc-rep-tag {
+  margin-left:auto; font-size:.52rem; font-weight:700; color:#0284c7;
+  background:rgba(14,165,233,.1); border:1px solid rgba(14,165,233,.25);
+  border-radius:4px; padding:1px 5px; white-space:nowrap;
+}
+.layer-row { display:flex; gap:7px; margin:8px 0 10px; }
+.layer-pill {
+  display:flex; align-items:center; gap:5px;
+  border-radius:8px; padding:6px 10px; flex:1;
+  font-size:.68rem; font-weight:700;
+}
+.lp-d { background:rgba(139,92,246,.1); border:1px solid rgba(139,92,246,.3); color:#6d28d9; }
+.lp-h { background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.3); color:#b45309; }
+.lp-s { background:rgba(16,185,129,.1); border:1px solid rgba(16,185,129,.3); color:#065f46; }
+.artifact-card {
+  display:flex; align-items:center; gap:12px;
+  background:#f8fafc; border:1.5px solid #e2e8f0;
+  border-radius:11px; padding:12px 16px;
+  text-decoration:none; transition:all .2s;
+}
+.artifact-card:hover { border-color:#0284c7; background:#eff6ff; box-shadow:0 4px 12px rgba(2,132,199,.08); }
+.artifact-icon-wrap {
+  width:36px; height:36px; border-radius:8px; flex-shrink:0;
+  background:linear-gradient(135deg,#d12026,#b91c1c);
+  display:flex; align-items:center; justify-content:center;
+}
+.artifact-text-main { font-size:.75rem; font-weight:700; color:#0369a1; line-height:1.3; word-break:break-all; }
+.artifact-text-sub  { font-size:.63rem; color:#94a3b8; margin-top:2px; }
+.artifact-arrow { margin-left:auto; color:#cbd5e1; font-size:.9rem; flex-shrink:0; }
 
 /* ── Footer ──────────────────────────────────────────────── */
 .rp-foot {
@@ -754,61 +820,93 @@ html, body { width: 100%; height: 100vh; overflow: hidden; font-family: 'Inter',
   <div class="rp">
     <div class="rp-body">
 
-      <div class="team-row">
-        <span class="team-label">Team Name</span>
-        <div class="box" style="flex:1;font-style:italic;font-size:.9rem;">⭐ &nbsp;TriStar</div>
+      <!-- Team Hero Banner -->
+      <div class="team-hero">
+        <div class="team-hero-icon">⭐</div>
+        <div>
+          <div class="team-hero-name">TriStar</div>
+          <div class="team-hero-sub">EPAM HACKATHON 2026 · LOYALTY AI PLATFORM</div>
+        </div>
+        <div class="team-hero-badge">Team</div>
       </div>
 
-      <div class="irow">
-        <div class="ibox">
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <circle cx="11" cy="7" r="4" stroke="#00b9c6" stroke-width="1.5"/>
-            <path d="M3 20 C3 15 6 13 11 13 C16 13 19 15 19 20" stroke="#00b9c6" stroke-width="1.5" stroke-linecap="round"/>
+      <!-- Representative -->
+      <div class="rep-row">
+        <div class="rep-icon">
+          <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+            <circle cx="11" cy="7" r="4" stroke="#0284c7" stroke-width="1.6"/>
+            <path d="M3 20 C3 15 6 13 11 13 C16 13 19 15 19 20" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round"/>
           </svg>
         </div>
-        <span class="irow-label">Representative:</span>
-        <div class="box" style="flex:1;font-style:italic;">Ram Naresh, Kartikey Puri</div>
+        <span class="rep-label">Representative:</span>
+        <span class="rep-names">Ram Naresh, Kartikey Puri</span>
       </div>
 
-      <div class="irow" style="margin-top:14px;">
-        <div class="ibox">
-          <svg width="26" height="22" viewBox="0 0 26 22" fill="none">
-            <circle cx="13" cy="6" r="3.5" stroke="#00b9c6" stroke-width="1.5"/>
-            <path d="M6 20 C6 16 8.5 14 13 14 C17.5 14 20 16 20 20" stroke="#00b9c6" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="5"  cy="7" r="2.5" stroke="#00b9c6" stroke-width="1.2" opacity=".6"/>
-            <path d="M1 20 C1 17 2.5 15.5 5 15.5"  stroke="#00b9c6" stroke-width="1.2" stroke-linecap="round" opacity=".6"/>
-            <circle cx="21" cy="7" r="2.5" stroke="#00b9c6" stroke-width="1.2" opacity=".6"/>
-            <path d="M25 20 C25 17 23.5 15.5 21 15.5" stroke="#00b9c6" stroke-width="1.2" stroke-linecap="round" opacity=".6"/>
-          </svg>
+      <!-- Team Members Grid -->
+      <div class="members-section-label">Team Members</div>
+      <div class="members-grid">
+        <div class="member-card mc-lead">
+          <div class="mc-avatar av-rn">RN</div>
+          <div>
+            <div class="mc-name">Ram Naresh</div>
+            <div class="mc-role">AI Architecture &amp; Backend</div>
+          </div>
+          <div class="mc-rep-tag">Rep</div>
         </div>
-        <span class="irow-label">Team members:</span>
+        <div class="member-card mc-lead">
+          <div class="mc-avatar av-kp">KP</div>
+          <div>
+            <div class="mc-name">Kartikey Puri</div>
+            <div class="mc-role">Full Stack &amp; Integration</div>
+          </div>
+          <div class="mc-rep-tag">Rep</div>
+        </div>
+        <div class="member-card mc-team">
+          <div class="mc-avatar av-ms">MS</div>
+          <div>
+            <div class="mc-name">Mohit Soni</div>
+            <div class="mc-role">Frontend &amp; UX Design</div>
+          </div>
+        </div>
+        <div class="member-card mc-team">
+          <div class="mc-avatar av-rs">RS</div>
+          <div>
+            <div class="mc-name">Riyaj Shaikh</div>
+            <div class="mc-role">Backend &amp; DevOps</div>
+          </div>
+        </div>
       </div>
-      <div class="members-box">Mohit Soni<br>Riyaj Shaikh</div>
 
+      <!-- TriStar Layer Pills -->
+      <div class="layer-row">
+        <div class="layer-pill lp-d">🎨 Designer — AI Offer Copilot</div>
+        <div class="layer-pill lp-h">🗄 Hub — Lifecycle State</div>
+        <div class="layer-pill lp-s">🎯 Scout — Real-Time Activation</div>
+      </div>
+
+      <!-- What we built -->
       <div class="tristar-tagline">
-        <strong>What we built:</strong> An AI-powered three-layer loyalty engine — <strong>Designer</strong> turns
-        a plain-English objective into a fraud-validated OfferBrief via Claude API; <strong>Hub</strong> tracks
-        lifecycle in Redis; <strong>Scout</strong> scores real-time context signals and activates the offer the
-        moment GPS, weather, time and behaviour converge. Stack: <strong>React 19 · FastAPI · Claude API · Redis · Azure</strong>.
+        <strong>What we built:</strong> AI-powered three-layer loyalty engine —
+        <strong>Designer</strong> turns plain-English objectives into fraud-validated OfferBriefs;
+        <strong>Hub</strong> tracks lifecycle in Redis; <strong>Scout</strong> activates at the perfect
+        moment using GPS, weather &amp; behaviour signals.
+        Stack: <strong>React 19 · FastAPI · Claude API · Redis · Azure</strong>.
       </div>
 
-      <div class="artifact-label" style="margin-top:14px;">
-        Artifact links <em>(Garage / ppt and solution demo location)</em>:
-      </div>
-      <div class="box-dashed" style="margin-top:5px;">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;">
-            <path d="M6 2H2a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V9" stroke="#d12026" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M10 1h5v5M15 1L8 8" stroke="#d12026" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Artefact Link -->
+      <a class="artifact-card" href="https://git.garage.epam.com/kartikey_puri/tristar/-/tree/develop?ref_type=heads" target="_blank" style="margin-top:12px;display:flex;">
+        <div class="artifact-icon-wrap">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+            <path d="M6 2H2a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V9" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M10 1h5v5M15 1L8 8" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <a href="https://git.garage.epam.com/kartikey_puri/tristar/-/tree/develop?ref_type=heads"
-             target="_blank"
-             style="font-size:.75rem;color:#0369a1;text-decoration:none;font-weight:600;word-break:break-all;font-style:normal;">
-            git.garage.epam.com/kartikey_puri/tristar/-/tree/develop
-          </a>
         </div>
-        <div style="font-size:.65rem;color:#888;margin-top:4px;font-style:italic;">EPAM Garage · develop branch</div>
-      </div>
+        <div>
+          <div class="artifact-text-main">git.garage.epam.com/kartikey_puri/tristar</div>
+          <div class="artifact-text-sub">EPAM Garage · develop branch · Full source code</div>
+        </div>
+        <div class="artifact-arrow">›</div>
+      </a>
 
     </div>
     <div class="rp-foot">
