@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     SERVICE_JWT_EXPIRY_HOURS: int = 24
 
     # ── CORS ───────────────────────────────────────────────────────────────────
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"]
 
     # ── Logging ────────────────────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"

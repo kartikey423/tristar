@@ -195,9 +195,6 @@ async def generate_purchase_triggered_offer(
             detail=f"Hub save failed: {e}",
         )
 
-    # Update active offer stacking count for fraud detection
-    fraud.record_active_offer(member_id=ctx.member_id)
-
     return saved_offer
 
 

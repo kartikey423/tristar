@@ -38,8 +38,9 @@ def get_claude_service() -> ClaudeApiService:
     return ClaudeApiService()
 
 
-@lru_cache(maxsize=1)
 def get_fraud_service() -> FraudCheckService:
+    # No lru_cache — in-memory _active_offer_counts must not persist across requests.
+    # A stale singleton causes "Member already has N active offers" false-positives.
     return FraudCheckService()
 
 
