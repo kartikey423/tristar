@@ -147,7 +147,14 @@ export function MobileNotificationPreview({
   const hasMatch = isMatchResponse(result);
   const rewardsValue = (totalRewardsPoints * 0.01).toFixed(2);
 
-  // Build notification text
+  // 75/25 Triangle Rewards rule for partner-generated offer
+  const partnerDiscountPct = partnerGeneratedOffer?.construct?.value ?? 15;
+  const partnerOfferValue = purchaseAmount * (partnerDiscountPct / 100);
+  const partnerMaxPoints = partnerOfferValue * 0.75;
+  const partnerMinCard = partnerOfferValue * 0.25;
+  const partnerNetPay = purchaseAmount - partnerMaxPoints;
+
+  // Build notification text for CTC match
   const notifTitle = hasMatch
     ? result.outcome === 'queued'
       ? 'Offer Scheduled for 8:00 AM'
@@ -162,10 +169,14 @@ export function MobileNotificationPreview({
       ? `You just earned ${pointsEarned.toLocaleString()} points at ${storeName}. Balance: ${totalRewardsPoints.toLocaleString()} pts ($${rewardsValue}).`
       : result.message ?? 'No matching offer right now.';
 
+  // Partner cross-sell notification body — includes payment split
   const pushChannel = partnerGeneratedOffer?.channels?.find((c) => c.channel_type === 'push');
-  const partnerNotifBody = pushChannel?.message_template
+  const partnerBaseMsg = pushChannel?.message_template
     ?? partnerGeneratedOffer?.objective
-    ?? `Check out this exclusive Canadian Tire offer from your visit to ${partnerBrandName ?? 'our partner'}!`;
+    ?? `Exclusive Canadian Tire offer from your visit to ${partnerBrandName ?? 'our partner'}!`;
+  const partnerNotifBody = partnerGeneratedOffer
+    ? `${partnerBaseMsg} Use up to $${partnerMaxPoints.toFixed(2)} in Triangle Points (75%) — pay min $${partnerMinCard.toFixed(2)} by card. Est. you pay: $${partnerNetPay.toFixed(2)}.`
+    : `Check out an exclusive Canadian Tire offer nearby. ${partnerDiscountPct}% off — pay with Triangle Points!`;
 
   return (
     <div className="flex flex-col items-center">
@@ -234,14 +245,16 @@ export function MobileNotificationPreview({
           {/* ── Notifications panel ── */}
           <div className="px-3 space-y-2.5 overflow-y-auto" style={{ maxHeight: 340 }}>
 
-            {/* Purchase receipt notification */}
+            {/* Purchase receipt notification — partner store or CTC */}
             <LockNotifCard
               delay={100}
-              accent="bg-[#E4003A]"
-              appName="Canadian Tire"
+              accent={isPartnerTrigger ? 'bg-[#c8102e]' : 'bg-[#E4003A]'}
+              appName={isPartnerTrigger && partnerBrandName ? partnerBrandName : 'Canadian Tire'}
               timeLabel="now"
               appIcon={
-                <span className="text-white text-[9px] font-bold leading-none">CT</span>
+                isPartnerTrigger && partnerBrandName
+                  ? <span className="text-white text-[9px] font-bold leading-none">{partnerBrandName.slice(0, 2).toUpperCase()}</span>
+                  : <span className="text-white text-[9px] font-bold leading-none">CT</span>
               }
               title={`Purchase at ${storeName}`}
               body={`${itemName} — $${purchaseAmount.toFixed(2)} · +${pointsEarned.toLocaleString()} pts earned`}
@@ -301,23 +314,20 @@ export function MobileNotificationPreview({
               />
             )}
 
-            {/* Partner cross-sell notification */}
-            {isPartnerTrigger && partnerBrandName && (
+            {/* Partner — Triangle Rewards points earned notification */}
+            {isPartnerTrigger && (
               <LockNotifCard
                 delay={300}
-                accent="bg-[#c8102e]"
-                appName={partnerBrandName}
+                accent="bg-[#E4003A]"
+                appName="Triangle Rewards"
                 timeLabel="now"
                 appIcon={
                   <svg viewBox="0 0 20 20" fill="white" className="w-3.5 h-3.5">
-                    <circle cx="10" cy="10" r="8" fill="white" fillOpacity="0.25" />
-                    <text x="10" y="14" textAnchor="middle" fontSize="9" fontWeight="bold" fill="white">
-                      {partnerBrandName.slice(0, 2).toUpperCase()}
-                    </text>
+                    <polygon points="10,2 18,17 2,17" />
                   </svg>
                 }
-                title={`Purchase at ${partnerBrandName}`}
-                body={`Thanks for visiting! Check out an exclusive Canadian Tire offer nearby.`}
+                title={`+${pointsEarned.toLocaleString()} pts earned at ${storeName}`}
+                body={`Balance: ${totalRewardsPoints.toLocaleString()} pts ($${rewardsValue}). A Canadian Tire offer is ready nearby!`}
               />
             )}
 
