@@ -7,9 +7,9 @@
  * of how the Triangle Rewards notification looks on the customer's phone.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { ScoutMatchResult } from '@/lib/scout-api';
-import { isMatchResponse } from '@/lib/scout-api';
+import { isMatchResponse, customerAcceptOffer } from '@/lib/scout-api';
 import type { OfferBrief } from '../../../shared/types/offer-brief';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -145,6 +145,31 @@ export function MobileNotificationPreview({
   const time = useLiveTime();
   const lockDate = formatLockDate();
   const hasMatch = isMatchResponse(result);
+
+  // ── Customer notification accept state ──────────────────────────────────────
+  type AcceptState = 'idle' | 'loading' | 'accepted' | 'error';
+  const [acceptState, setAcceptState] = useState<AcceptState>('idle');
+  const [acceptMsg, setAcceptMsg] = useState('');
+
+  // Reset when a new result arrives
+  useEffect(() => { setAcceptState('idle'); setAcceptMsg(''); }, [result]);
+
+  const handleAccept = useCallback(async () => {
+    const offerId = hasMatch ? (result as { offer_id: string }).offer_id : null;
+    const partnerOfferId = partnerGeneratedOffer?.offer_id ?? null;
+    const id = partnerOfferId ?? offerId;
+    if (!id) return;
+
+    setAcceptState('loading');
+    const { success, message } = await customerAcceptOffer(id);
+    if (success) {
+      setAcceptState('accepted');
+      setAcceptMsg('Offer activated! Check the Hub for your active deal.');
+    } else {
+      setAcceptState('error');
+      setAcceptMsg(message);
+    }
+  }, [hasMatch, result, partnerGeneratedOffer]);
   const rewardsValue = (totalRewardsPoints * 0.01).toFixed(2);
 
   // 75/25 Triangle Rewards rule for partner-generated offer
@@ -275,7 +300,8 @@ export function MobileNotificationPreview({
                 }
                 title={notifTitle}
                 body={notifBody}
-                actionLabel="View Offer →"
+                actionLabel={acceptState === 'loading' ? 'Activating…' : acceptState === 'accepted' ? '✓ Activated!' : 'View Offer →'}
+                onActionClick={acceptState === 'idle' ? handleAccept : undefined}
               />
             )}
 
@@ -343,7 +369,8 @@ export function MobileNotificationPreview({
                 }
                 title="Exclusive offer near you!"
                 body={partnerNotifBody}
-                actionLabel="View Offer →"
+                actionLabel={acceptState === 'loading' ? 'Activating…' : acceptState === 'accepted' ? '✓ Activated!' : 'View Offer →'}
+                onActionClick={acceptState === 'idle' ? handleAccept : undefined}
               />
             )}
 
@@ -367,6 +394,30 @@ export function MobileNotificationPreview({
 
           {/* Swipe hint */}
           <SwipeHint />
+
+          {/* ── Accepted overlay — full screen "offer activated" confirmation ── */}
+          {acceptState === 'accepted' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-30 rounded-[44px] px-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center mb-4 shadow-lg">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+              <p className="text-white text-[18px] font-bold mb-1">Offer Activated!</p>
+              <p className="text-white/80 text-[13px] leading-snug">{acceptMsg}</p>
+              <div className="mt-4 rounded-full bg-white/20 px-4 py-1.5">
+                <p className="text-white/70 text-[11px]">Check the Hub tab to see your active offer</p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Error overlay ── */}
+          {acceptState === 'error' && (
+            <div className="absolute bottom-20 left-3 right-3 z-30 rounded-2xl bg-red-500/90 backdrop-blur-sm px-4 py-3 text-center">
+              <p className="text-white text-[12px] font-semibold">Could not activate offer</p>
+              <p className="text-white/80 text-[11px] mt-0.5">{acceptMsg}</p>
+            </div>
+          )}
 
           {/* Home indicator */}
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-28 h-1 bg-white/30 rounded-full" />

@@ -346,6 +346,79 @@ async def update_construct_value(
     return updated
 
 
+@router.post(
+    "/offers/{offer_id}/customer-accept",
+    response_model=OfferBrief,
+    summary="Customer accepted offer via notification tap",
+    description=(
+        "Auto-approves and activates an offer when the customer taps 'View Offer' on their push "
+        "notification. Bypasses the marketer approval step — intended for Scout-activated offers. "
+        "Performs draft→approved→active in a single atomic transition."
+    ),
+)
+async def customer_accept_offer(
+    offer_id: str,
+    hub_store: HubStore = Depends(get_hub_store),
+    hub_audit: HubAuditService = Depends(get_hub_audit_service),
+) -> OfferBrief:
+    """Customer tapped the notification — skip marketer approval, activate immediately."""
+    t0 = time.monotonic()
+    try:
+        offer = await hub_store.get(offer_id)
+    except RedisUnavailableError as e:
+        logger.error(f"hub_redis_unavailable: {e}")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Hub store unavailable")
+
+    if offer is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Offer {offer_id} not found")
+
+    # Already active — idempotent, return as-is
+    if offer.status == OfferStatus.active:
+        return offer
+
+    # Approve first if still draft
+    if offer.status == OfferStatus.draft:
+        offer = offer.model_copy(update={"status": OfferStatus.approved})
+        await hub_store.update(offer)
+        _fire_audit(
+            hub_audit.log_event(
+                HubAuditEvent(
+                    offer_id=offer_id,
+                    event="status_transition",
+                    old_status=OfferStatus.draft,
+                    new_status=OfferStatus.approved,
+                    actor_id="customer_notification_tap",
+                )
+            )
+        )
+
+    # Now activate
+    if offer.status == OfferStatus.approved:
+        activated = offer.model_copy(update={"status": OfferStatus.active})
+        await hub_store.update(activated)
+        _fire_audit(
+            hub_audit.log_event(
+                HubAuditEvent(
+                    offer_id=offer_id,
+                    event="status_transition",
+                    old_status=OfferStatus.approved,
+                    new_status=OfferStatus.active,
+                    actor_id="customer_notification_tap",
+                )
+            )
+        )
+        logger.info(
+            "offer_customer_accepted",
+            extra={"offer_id": offer_id, "elapsed_ms": round((time.monotonic() - t0) * 1000, 1)},
+        )
+        return activated
+
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail=f"Cannot activate offer in status '{offer.status.value}' via customer accept.",
+    )
+
+
 @router.delete(
     "/offers/{offer_id}",
     status_code=status.HTTP_204_NO_CONTENT,
