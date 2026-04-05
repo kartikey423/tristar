@@ -167,9 +167,10 @@ export function MobileNotificationPreview({
   type AcceptState = 'idle' | 'viewing' | 'loading' | 'accepted' | 'error';
   const [acceptState, setAcceptState] = useState<AcceptState>('idle');
   const [acceptMsg, setAcceptMsg] = useState('');
+  const [offerAvailed, setOfferAvailed] = useState(false);
 
   // Reset when a new result arrives
-  useEffect(() => { setAcceptState('idle'); setAcceptMsg(''); }, [result]);
+  useEffect(() => { setAcceptState('idle'); setAcceptMsg(''); setOfferAvailed(false); }, [result]);
 
   const handleAccept = useCallback(async () => {
     const offerId = hasMatch ? (result as { offer_id: string }).offer_id : null;
@@ -181,6 +182,7 @@ export function MobileNotificationPreview({
     const { success, message } = await customerAcceptOffer(id);
     if (success) {
       setAcceptState('accepted');
+      setOfferAvailed(true);
       setAcceptMsg('Offer activated! Check the Hub for your active deal.');
     } else {
       setAcceptState('error');
@@ -559,9 +561,14 @@ export function MobileNotificationPreview({
               <div className="px-5 pb-10 pt-3">
                 <button
                   onClick={handleAccept}
-                  className="w-full bg-[#E4003A] text-white font-bold text-[15px] py-3.5 rounded-2xl active:opacity-80 transition-opacity"
+                  disabled={offerAvailed}
+                  className={`w-full font-bold text-[15px] py-3.5 rounded-2xl transition-opacity ${
+                    offerAvailed
+                      ? 'bg-gray-500 text-gray-300 cursor-not-allowed opacity-60'
+                      : 'bg-[#E4003A] text-white active:opacity-80'
+                  }`}
                 >
-                  Avail Offer
+                  {offerAvailed ? 'Offer Availed' : 'Avail Offer'}
                 </button>
               </div>
             </div>

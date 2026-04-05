@@ -2,7 +2,7 @@
 
 **Project:** Triangle Smart Targeting and Real-Time Activation
 **Hackathon:** CTC True North 2026 (March 9-18)
-**Last Updated:** 2026-04-05
+**Last Updated:** 2026-04-05 (v3.1)
 
 ---
 
@@ -163,12 +163,13 @@ stateDiagram-v2
     [*] --> LockScreen : Match scoring completes
 
     LockScreen --> OfferDetail : Customer taps "View Offer →"
-    OfferDetail --> Loading : Customer taps "Avail Offer"
-    Loading --> OfferActive : POST /customer-accept succeeds
+    OfferDetail --> Loading : Customer taps "Avail Offer"\n(button enabled only if not yet availed)
+    Loading --> OfferActive : POST /customer-accept succeeds\nofferAvailed = true
     Loading --> Error : Request fails
     OfferActive --> LockScreen : Customer taps "Back to main screen"
     OfferDetail --> LockScreen : Customer taps "← Back"
     Error --> LockScreen : Customer taps "Back"
+    LockScreen --> OfferDetail : Re-open (offerAvailed persists)\nButton shown as "Offer Availed" (disabled)
 
     note right of LockScreen
         Short rewards-focused body:
@@ -182,6 +183,8 @@ stateDiagram-v2
         price breakdown table:
         Original → Offer price →
         Rewards max 75% → You pay min 25%
+        "Avail Offer" button disabled + greyed
+        once offerAvailed = true
     end note
 
     note right of OfferActive
@@ -198,6 +201,15 @@ stateDiagram-v2
 | **Lock screen notification** | e.g. `Exclusive offer for you, Alice!` | Short: `Windshield Wipers (pair) at 22% off — use up to $14.62 in Triangle Rewards. Pay just $4.87.` |
 | **Offer Details** | `Offer Details` | Personalized: *"Spring is here, Alice! Since you picked up a Motor Oil 5W-30 (5L), your next best offer is Windshield Wipers (pair) at 22% off."* + full price breakdown |
 | **Offer Active** | `Offer Active!` | Confirmation with Hub link + "Back to main screen" |
+
+### Avail Offer Button States
+
+| State | Button Label | Style | Clickable |
+|-------|-------------|-------|-----------|
+| Not yet availed | `Avail Offer` | Red (`#E4003A`) | Yes |
+| Availed (`offerAvailed = true`) | `Offer Availed` | Grey, 60% opacity | No (disabled) |
+
+`offerAvailed` is a React state flag set to `true` on successful `POST /customer-accept`. It **persists** while the current context result is active — even if the customer navigates back to the lock screen and reopens the offer. It resets to `false` only when a new context match result arrives (fresh trigger).
 
 ---
 
@@ -701,6 +713,7 @@ src/frontend/
 │   │   ├── MobileNotificationPreview.tsx  # iPhone lock-screen mockup — 3-screen flow:
 │   │   │                                  #   1. Lock screen (short rewards body)
 │   │   │                                  #   2. Offer Details (personalized msg + price breakdown)
+│   │   │                                  #      "Avail Offer" button disabled once offerAvailed=true
 │   │   │                                  #   3. Offer Active (confirmation + back to main)
 │   │   └── ActivationFeed.tsx   # Score, outcome, rationale, notification text
 │   └── Shell/
