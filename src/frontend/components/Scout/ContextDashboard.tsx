@@ -1281,7 +1281,7 @@ function PartnerOfferCard({ offer, purchaseAmount }: { offer: OfferBrief; purcha
           How to pay with Triangle Rewards
         </p>
         <div className="flex items-center justify-between text-[12px]">
-          <span className="text-gray-600">Savings on your next CTC purchase</span>
+          <span className="text-gray-600">Savings on <span className="font-medium text-gray-800">{offer.construct.description.replace('15% off ', '').replace(' at Canadian Tire', '')}</span></span>
           <span className="font-semibold text-gray-800">−${offerValue.toFixed(2)}</span>
         </div>
         <div className="flex items-center justify-between text-[12px]">
@@ -1297,7 +1297,7 @@ function PartnerOfferCard({ offer, purchaseAmount }: { offer: OfferBrief; purcha
           <span className="text-base font-bold text-emerald-800">${netYouPay.toFixed(2)}</span>
         </div>
         <p className="text-[10px] text-gray-400 mt-0.5">
-          Based on your purchase total of ${baseAmount.toFixed(2)} · Min 25% must be paid by card per Triangle Rewards rules.
+          Price calculated for <span className="font-medium">{offer.construct.description.replace('15% off ', '').replace(' at Canadian Tire', '')}</span> · Based on ${baseAmount.toFixed(2)} spend · Min 25% by card per Triangle Rewards rules.
         </p>
       </div>
 

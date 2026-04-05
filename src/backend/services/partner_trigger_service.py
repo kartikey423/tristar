@@ -287,18 +287,18 @@ class PartnerTriggerService:
     def _build_predictive_context(
         self, event: PartnerPurchaseEvent, category: str,
         location_zone: LocationZone, time_type: "TimeType",
-    ) -> tuple[str, str]:
-        """Return (objective, push_message) enriched with location, store, and payment split."""
+    ) -> tuple[str, str, str]:
+        """Return (objective, push_message, product_name) enriched with location, store, and payment split."""
         from src.backend.services.canadian_holiday_service import TimeType as TT
 
         display_category = category.replace("_", " ").title()
 
-        # Product recommendation per zone (seasonal & location-aware)
+        # Single best-fit product per zone (seasonal & location-aware)
         zone_product: dict[LocationZone, str] = {
-            LocationZone.hill_station: "winter tires, snow gear, ski accessories & outdoor equipment",
-            LocationZone.cottage_lakes: "marine accessories, fishing gear & dock equipment",
-            LocationZone.highway: "car emergency kits, motor oil & travel accessories",
-            LocationZone.urban: "home & auto essentials",
+            LocationZone.hill_station: "Winter Tires",
+            LocationZone.cottage_lakes: "Marine Accessories",
+            LocationZone.highway: "Car Emergency Kit",
+            LocationZone.urban: "Home & Auto Essentials",
         }
         product_hint = zone_product.get(location_zone, display_category)
 
@@ -309,9 +309,9 @@ class PartnerTriggerService:
             TT.weekday: "today",
         }.get(time_type, "today")
 
-        # Marketplace price comparison
+        # Marketplace price comparison — no brand names, generic market comparison
         premium_mult = self._MARKETPLACE_PREMIUM.get(category, 1.12)
-        ctc_price_note = f"~{int((premium_mult - 1) * 100)}% cheaper than Amazon"
+        ctc_price_note = f"~{int((premium_mult - 1) * 100)}% below market price"
 
         # Nearest CTC store — expand radius for partner trigger (partner stores may be farther)
         nearby = self._store_fixtures.get_nearby(event.location, radius_km=10.0) if event.location else []
@@ -321,7 +321,7 @@ class PartnerTriggerService:
         else:
             store_line = "your nearest Canadian Tire"
 
-        # 75/25 Triangle Rewards payment split copy
+        # 75/25 Triangle Rewards payment split copy — tied to the specific product offer
         discount_pct = 15  # matches the offer construct value in _generate_offer
         offer_value = event.purchase_amount * (discount_pct / 100)
         max_points_value = offer_value * 0.75
@@ -337,10 +337,10 @@ class PartnerTriggerService:
         )
         message = (
             f"You stopped at {event.partner_name}! "
-            f"{store_line} has {product_hint} {time_copy}. "
-            f"{ctc_price_note}. {payment_line}. Tap to see deals."
+            f"Get 15% off {product_hint} at {store_line} {time_copy} — {ctc_price_note}. "
+            f"{payment_line}. Tap to see deal."
         )
-        return objective, message
+        return objective, message, product_hint
 
     async def _generate_offer(
         self,
@@ -361,8 +361,9 @@ class PartnerTriggerService:
         display_category = category.replace("_", " ").title()
 
         # Build rich predictive context if zone/time available
+        product_name = display_category  # fallback
         if location_zone is not None and time_type is not None:
-            objective, push_message = self._build_predictive_context(
+            objective, push_message, product_name = self._build_predictive_context(
                 event, category, location_zone, time_type
             )
         else:
@@ -393,7 +394,7 @@ class PartnerTriggerService:
             construct=Construct(
                 type="percentage_off",
                 value=15.0,  # Conservative 15% discount — below fraud threshold
-                description=f"15% off {display_category} at Canadian Tire",
+                description=f"15% off {product_name} at Canadian Tire",
                 payment_split=PaymentSplit(points_max_pct=75.0, cash_min_pct=25.0),
             ),
             channels=[Channel(
