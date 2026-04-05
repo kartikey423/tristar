@@ -16,6 +16,7 @@ import type { MatchRequest, ScoutMatchResult, ScoutMatchError, PartnerPurchaseEv
 import { callScoutMatch, callPartnerTrigger, isMatchResponse } from '@/lib/scout-api';
 import type { OfferBrief } from '../../../shared/types/offer-brief';
 import { ActivationFeed } from './ActivationFeed';
+import { MobileNotificationPreview } from './MobileNotificationPreview';
 
 // ── Store fixtures ─────────────────────────────────────────────────────────────
 
@@ -1140,25 +1141,47 @@ export function ContextDashboard() {
         </div>
       )}
 
-      {/* ── Rich push notification card ── */}
+      {/* ── Two-column layout: mobile phone preview + detailed card ── */}
       {result && purchaseSummary && (
-        <PushNotificationCard
-          storeId={purchaseSummary.store.id}
-          storeBrand={purchaseSummary.store.brand}
-          storeName={purchaseSummary.store.name}
-          itemName={purchaseSummary.item.name}
-          itemCategory={purchaseSummary.item.category}
-          purchaseAmount={purchaseSummary.item.price}
-          pointsEarned={purchaseSummary.pointsEarned}
-          currentRewardsPoints={purchaseSummary.currentRewardsPoints}
-          totalRewardsPoints={purchaseSummary.totalRewardsPoints}
-          storeLat={purchaseSummary.store.lat}
-          storeLon={purchaseSummary.store.lon}
-          memberId={purchaseSummary.memberId}
-          memberFirstName={member.firstName}
-          occasion={occasion}
-          result={result}
-        />
+        <div className="flex flex-col xl:flex-row gap-6 items-start">
+
+          {/* Left: iPhone mockup */}
+          <div className="xl:sticky xl:top-6 flex-shrink-0 self-center xl:self-start">
+            <MobileNotificationPreview
+              memberFirstName={member.firstName}
+              storeName={purchaseSummary.store.name}
+              itemName={purchaseSummary.item.name}
+              purchaseAmount={purchaseSummary.item.price}
+              pointsEarned={purchaseSummary.pointsEarned}
+              totalRewardsPoints={purchaseSummary.totalRewardsPoints}
+              result={result}
+              isPartnerTrigger={isPartnerTrigger}
+              partnerBrandName={isPartnerTrigger ? purchaseSummary.store.name : undefined}
+              partnerGeneratedOffer={partnerGeneratedOffer}
+            />
+          </div>
+
+          {/* Right: rich detail card */}
+          <div className="flex-1 min-w-0">
+            <PushNotificationCard
+              storeId={purchaseSummary.store.id}
+              storeBrand={purchaseSummary.store.brand}
+              storeName={purchaseSummary.store.name}
+              itemName={purchaseSummary.item.name}
+              itemCategory={purchaseSummary.item.category}
+              purchaseAmount={purchaseSummary.item.price}
+              pointsEarned={purchaseSummary.pointsEarned}
+              currentRewardsPoints={purchaseSummary.currentRewardsPoints}
+              totalRewardsPoints={purchaseSummary.totalRewardsPoints}
+              storeLat={purchaseSummary.store.lat}
+              storeLon={purchaseSummary.store.lon}
+              memberId={purchaseSummary.memberId}
+              memberFirstName={member.firstName}
+              occasion={occasion}
+              result={result}
+            />
+          </div>
+        </div>
       )}
 
       {/* ── Activation history ── */}
