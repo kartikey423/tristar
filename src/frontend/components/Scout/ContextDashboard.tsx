@@ -16,6 +16,7 @@ import type { MatchRequest, ScoutMatchResult, ScoutMatchError, PartnerPurchaseEv
 import { callScoutMatch, callPartnerTrigger, isMatchResponse } from '@/lib/scout-api';
 import type { OfferBrief } from '../../../shared/types/offer-brief';
 import { ActivationFeed } from './ActivationFeed';
+import { MobileNotificationPreview } from './MobileNotificationPreview';
 
 // ── Store fixtures ─────────────────────────────────────────────────────────────
 
@@ -1097,7 +1098,7 @@ export function ContextDashboard() {
 
           {/* Offer found — display inline */}
           {partnerPollStatus === 'found' && partnerGeneratedOffer && (
-            <PartnerOfferCard offer={partnerGeneratedOffer} />
+            <PartnerOfferCard offer={partnerGeneratedOffer} purchaseAmount={item.price} />
           )}
 
           {/* Timed out */}
@@ -1140,25 +1141,47 @@ export function ContextDashboard() {
         </div>
       )}
 
-      {/* ── Rich push notification card ── */}
+      {/* ── Two-column layout: mobile phone preview + detailed card ── */}
       {result && purchaseSummary && (
-        <PushNotificationCard
-          storeId={purchaseSummary.store.id}
-          storeBrand={purchaseSummary.store.brand}
-          storeName={purchaseSummary.store.name}
-          itemName={purchaseSummary.item.name}
-          itemCategory={purchaseSummary.item.category}
-          purchaseAmount={purchaseSummary.item.price}
-          pointsEarned={purchaseSummary.pointsEarned}
-          currentRewardsPoints={purchaseSummary.currentRewardsPoints}
-          totalRewardsPoints={purchaseSummary.totalRewardsPoints}
-          storeLat={purchaseSummary.store.lat}
-          storeLon={purchaseSummary.store.lon}
-          memberId={purchaseSummary.memberId}
-          memberFirstName={member.firstName}
-          occasion={occasion}
-          result={result}
-        />
+        <div className="flex flex-col xl:flex-row gap-6 items-start">
+
+          {/* Left: iPhone mockup */}
+          <div className="xl:sticky xl:top-6 flex-shrink-0 self-center xl:self-start">
+            <MobileNotificationPreview
+              memberFirstName={member.firstName}
+              storeName={purchaseSummary.store.name}
+              itemName={purchaseSummary.item.name}
+              purchaseAmount={purchaseSummary.item.price}
+              pointsEarned={purchaseSummary.pointsEarned}
+              totalRewardsPoints={purchaseSummary.totalRewardsPoints}
+              result={result}
+              isPartnerTrigger={isPartnerTrigger}
+              partnerBrandName={isPartnerTrigger ? purchaseSummary.store.name : undefined}
+              partnerGeneratedOffer={partnerGeneratedOffer}
+            />
+          </div>
+
+          {/* Right: rich detail card */}
+          <div className="flex-1 min-w-0">
+            <PushNotificationCard
+              storeId={purchaseSummary.store.id}
+              storeBrand={purchaseSummary.store.brand}
+              storeName={purchaseSummary.store.name}
+              itemName={purchaseSummary.item.name}
+              itemCategory={purchaseSummary.item.category}
+              purchaseAmount={purchaseSummary.item.price}
+              pointsEarned={purchaseSummary.pointsEarned}
+              currentRewardsPoints={purchaseSummary.currentRewardsPoints}
+              totalRewardsPoints={purchaseSummary.totalRewardsPoints}
+              storeLat={purchaseSummary.store.lat}
+              storeLon={purchaseSummary.store.lon}
+              memberId={purchaseSummary.memberId}
+              memberFirstName={member.firstName}
+              occasion={occasion}
+              result={result}
+            />
+          </div>
+        </div>
       )}
 
       {/* ── Activation history ── */}
@@ -1169,8 +1192,18 @@ export function ContextDashboard() {
 
 // ── Partner Offer Inline Card ─────────────────────────────────────────────────
 
-function PartnerOfferCard({ offer }: { offer: OfferBrief }) {
+function PartnerOfferCard({ offer, purchaseAmount }: { offer: OfferBrief; purchaseAmount?: number }) {
   const pushChannel = offer.channels.find((c) => c.channel_type === 'push');
+
+  // Payment split calculation — 75/25 Triangle Rewards rule
+  const discountPct = offer.construct.value ?? 15;
+  // Use purchase amount for savings context; fallback to a representative $50 if not provided
+  const baseAmount = purchaseAmount ?? 50;
+  const offerValue = baseAmount * (discountPct / 100);
+  const maxPoints = offerValue * 0.75;
+  const minCard = offerValue * 0.25;
+  const netYouPay = baseAmount - maxPoints; // base - max points redeemable toward this offer
+
   return (
     <div className="px-4 py-4 bg-white">
       <div className="flex items-center gap-1.5 mb-2">
@@ -1180,17 +1213,48 @@ function PartnerOfferCard({ offer }: { offer: OfferBrief }) {
         <code className="text-[10px] text-gray-400 font-mono ml-auto">{offer.offer_id.slice(0, 8)}</code>
       </div>
       <p className="text-sm text-gray-700 leading-snug">{offer.objective}</p>
+
+      {/* Offer headline */}
       <div className="mt-2 flex items-center gap-3">
-        <span className="text-xl font-bold text-ct-red">{offer.construct.value}% off</span>
+        <span className="text-xl font-bold text-ct-red">{discountPct}% off</span>
         <span className="text-xs text-gray-500">{offer.construct.description}</span>
       </div>
+
+      {/* Push message */}
       {pushChannel?.message_template && (
         <p className="mt-2 rounded bg-gray-50 px-3 py-2 text-xs italic leading-snug text-gray-600">
           &ldquo;{pushChannel.message_template}&rdquo;
         </p>
       )}
+
+      {/* 75/25 Payment breakdown */}
+      <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-2.5 space-y-1">
+        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+          How to pay with Triangle Rewards
+        </p>
+        <div className="flex items-center justify-between text-[12px]">
+          <span className="text-gray-600">Savings on your next CTC purchase</span>
+          <span className="font-semibold text-gray-800">−${offerValue.toFixed(2)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[12px]">
+          <span className="text-green-700">Triangle Points (max 75%)</span>
+          <span className="font-medium text-green-700">up to −${maxPoints.toFixed(2)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[12px]">
+          <span className="text-gray-500">Card (min 25%)</span>
+          <span className="text-gray-500">min ${minCard.toFixed(2)}</span>
+        </div>
+        <div className="flex items-center justify-between text-[12px] border-t border-emerald-100 pt-1.5 mt-0.5">
+          <span className="font-bold text-emerald-800">You pay (estimated)</span>
+          <span className="text-base font-bold text-emerald-800">${netYouPay.toFixed(2)}</span>
+        </div>
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          Based on your purchase total of ${baseAmount.toFixed(2)} · Min 25% must be paid by card per Triangle Rewards rules.
+        </p>
+      </div>
+
       {offer.valid_until && (
-        <p className="mt-1.5 text-[11px] text-gray-400">
+        <p className="mt-2 text-[11px] text-gray-400">
           Valid until {new Date(offer.valid_until).toLocaleString()}
         </p>
       )}
@@ -1248,11 +1312,16 @@ function PushNotificationCard({
   const discountedNextItemPrice = nextBestItem
     ? nextBestItem.item.price * (1 - nextBestItem.predictedDiscountPct / 100)
     : null;
+  // Triangle Rewards rule: max 75% of any transaction payable in points, min 25% by card
+  const maxRedeemable =
+    discountedNextItemPrice != null ? discountedNextItemPrice * 0.75 : null;
   const redeemValue =
-    discountedNextItemPrice != null ? Math.min(totalRewardsValue, discountedNextItemPrice) : null;
+    discountedNextItemPrice != null && maxRedeemable != null
+      ? Math.min(totalRewardsValue, maxRedeemable)
+      : null;
   const amountAfterRewards =
     discountedNextItemPrice != null && redeemValue != null
-      ? Math.max(0, discountedNextItemPrice - redeemValue)
+      ? Math.max(discountedNextItemPrice * 0.25, discountedNextItemPrice - redeemValue)
       : null;
   const personalizedMsg = generatePersonalizedMessage(
     memberFirstName,
@@ -1371,11 +1440,11 @@ function PushNotificationCard({
                     <span className="text-[11px] font-semibold text-gray-800">${discountedNextItemPrice.toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-[11px] text-green-600">Rewards used</span>
+                    <span className="text-[11px] text-green-600">Rewards (max 75%)</span>
                     <span className="text-[11px] font-medium text-green-600">-${redeemValue.toFixed(2)}</span>
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-4 border-t border-emerald-100 pt-1">
-                    <span className="text-xs font-bold text-emerald-800">You pay</span>
+                    <span className="text-xs font-bold text-emerald-800">You pay (min 25%)</span>
                     <span className="text-sm font-bold text-emerald-800">${amountAfterRewards.toFixed(2)}</span>
                   </div>
                 </div>
