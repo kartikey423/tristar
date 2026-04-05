@@ -138,21 +138,13 @@ export async function callPartnerTrigger(
 
 /**
  * Customer tapped "View Offer →" on their phone notification.
- * Calls POST /api/hub/offers/{offer_id}/customer-accept which auto-approves
- * and activates the offer without requiring marketer action.
- *
- * Uses NEXT_PUBLIC_API_URL (browser-safe) + NEXT_PUBLIC_MARKETER_JWT for auth.
+ * Calls the Next.js server-side proxy which forwards to the backend using API_URL.
+ * Routing through the proxy ensures all developers hit the same shared backend
+ * regardless of whether NEXT_PUBLIC_API_URL is configured on their machine.
  */
 export async function customerAcceptOffer(offerId: string): Promise<{ success: boolean; message: string }> {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
-  const jwt = process.env.NEXT_PUBLIC_MARKETER_JWT ?? '';
-
-  const res = await fetch(`${base}/api/hub/offers/${encodeURIComponent(offerId)}/customer-accept`, {
+  const res = await fetch(`/api/hub-accept/${encodeURIComponent(offerId)}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-    },
   });
 
   if (!res.ok) {
