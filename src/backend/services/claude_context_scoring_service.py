@@ -53,6 +53,7 @@ Return ONLY valid JSON with exactly these three fields — no explanation:
 - Purchase just made: {purchase_category} at {store_name} (+{rewards_earned} Triangle points)
 - Day context: {day_context}
 - Time: {hour}:00 UTC
+- Member ID: {member_id} (use to personalise — different members must get different notifications)
 {member_section}
 {weather_section}
 {location_section}
@@ -62,15 +63,19 @@ Return ONLY valid JSON with exactly these three fields — no explanation:
 - Description: {offer_description}
 - Value: {construct_type} — {construct_value}
 - Target segment: {segment_name}
+- Payment rule: max {points_max_pct:.0f}% Triangle points, min {cash_min_pct:.0f}% card payment
 
 ## Scoring Criteria (0-100)
 Score based on: relevance to predicted next destination, contextual fit with the purchase,
 member behavioral alignment, timing appropriateness.
 Score EXACTLY 60 or below = NOT activated. Score 61+ = activated.
 
-## Notification Text Format
-"[Rewards hook] — [Offer] at [Store name], [Distance]. [Savings claim]."
-Example: "You earned 120 Triangle points at Tim Hortons — 20% off Outdoor gear at Canadian Tire 400m away. Save 15% vs Amazon."
+## Notification Text Rules
+1. ALWAYS mention Triangle Rewards payment split: "Use up to {points_max_pct:.0f}% Triangle points, pay min {cash_min_pct:.0f}% by card"
+2. Include the nearest CTC store name and distance (from location section above)
+3. Personalise to the member's purchase category and loyalty tier — every member gets unique text
+4. Format: "[Rewards hook] — [Offer] at [Store], [Distance]. Use up to {points_max_pct:.0f}% Triangle points, pay min {cash_min_pct:.0f}% by card."
+Example: "You earned 120 pts at Tim Hortons — 20% off Wiper Blades at Canadian Tire 400m away. Use up to 75% Triangle points, pay min 25% by card."
 """
 
 
@@ -87,14 +92,16 @@ class ClaudeContextScoringService:
         self._cache: dict[str, tuple[ClaudeScoreResult, datetime]] = {}
 
     def _context_hash(self, context: EnrichedMatchContext, offer: OfferBrief) -> str:
-        """Compute cache key for (offer, context) combination.
+        """Compute cache key for (member, offer, context) combination.
 
-        Fields: offer_id + purchase_category + 3-hour bucket + weather_condition.
-        Excludes member_id — scores are offer+context specific, not member-specific.
+        Includes member_id and loyalty_tier so different members always get
+        different personalised notifications (Point 4 — per-member uniqueness).
         """
         hour_bucket = str((datetime.now(timezone.utc).hour // 3) * 3)
         weather = context.weather.condition if context.weather else "none"
-        raw = f"{offer.offer_id}:{context.request.purchase_category}:{hour_bucket}:{weather}"
+        member_id = context.request.member_id
+        tier = context.member.loyalty_tier if context.member else "unknown"
+        raw = f"{member_id}:{tier}:{offer.offer_id}:{context.request.purchase_category}:{hour_bucket}:{weather}"
         return hashlib.sha256(raw.encode()).hexdigest()
 
     def _get_cached(self, context_hash: str) -> Optional[ClaudeScoreResult]:
@@ -144,12 +151,18 @@ class ClaudeContextScoringService:
             location_section = "- Nearest CTC store: none within 2km of purchase location"
 
         now = datetime.now(timezone.utc)
+        # Payment split — default to 75/25 if not set on the offer
+        ps = offer.construct.payment_split
+        points_max_pct = ps.points_max_pct if ps else 75.0
+        cash_min_pct = ps.cash_min_pct if ps else 25.0
+
         return _SCORING_PROMPT_TEMPLATE.format(
             purchase_category=req.purchase_category,
             store_name="partner store",  # store name not in MatchRequest — generic
             rewards_earned=req.rewards_earned,
             day_context=req.day_context.value,
             hour=now.hour,
+            member_id=req.member_id,
             member_section=member_section,
             weather_section=weather_section,
             location_section=location_section,
@@ -158,6 +171,8 @@ class ClaudeContextScoringService:
             construct_type=offer.construct.type,
             construct_value=offer.construct.value,
             segment_name=offer.segment.name,
+            points_max_pct=points_max_pct,
+            cash_min_pct=cash_min_pct,
         )
 
     def _parse_response(self, text: str) -> tuple[float, str, str]:
@@ -206,10 +221,23 @@ class ClaudeContextScoringService:
             f"Deterministic fallback scoring (Claude unavailable). "
             f"Score breakdown: {result.breakdown}"
         )
+        # Build a meaningful fallback notification with 75/25 payment split details
+        ps = offer.construct.payment_split
+        points_max = ps.points_max_pct if ps else 75.0
+        cash_min = ps.cash_min_pct if ps else 25.0
+        store_hint = (
+            f"at {context.nearby_stores[0].store_name} ({context.nearby_stores[0].distance_km:.1f}km away)"
+            if context.nearby_stores else "at your nearest Canadian Tire"
+        )
+        fallback_notification = (
+            f"{offer.construct.description} {store_hint}. "
+            f"Use up to {points_max:.0f}% Triangle points, pay min {cash_min:.0f}% by card. "
+            f"Limited time offer."
+        )
         return ClaudeScoreResult(
             score=result.total,
             rationale=rationale,
-            notification_text="",
+            notification_text=fallback_notification,
             scoring_method=ScoringMethod.fallback,
         )
 

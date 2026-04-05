@@ -32,6 +32,8 @@ from src.backend.models.scout_match import (
     NoMatchResponse,
     ScoutActivationRecord,
     ScoutOutcome,
+    SmartMatchResponse,
+    SmartOfferItem,
 )
 from src.backend.services.claude_context_scoring_service import (
     ClaudeContextScoringService,
@@ -114,6 +116,80 @@ class ScoutMatchService:
             return NoMatchResponse(message="No offers scored above activation threshold")
 
         return await self._dispatch_outcome(request.member_id, best_offer, best_result)
+
+    async def smart_match(self, request: MatchRequest) -> SmartMatchResponse:
+        """Route-aware multi-offer match — returns ALL scored offers above threshold.
+
+        Point 5: CTC-store offers are ranked first (priority=1), partner-triggered
+        offers second (priority=2). Within each priority group, sorted by score desc.
+        This gives members visibility into all relevant nearby offers, not just the top 1.
+        """
+        context, offers = await asyncio.gather(
+            self._enrich_context(request),
+            self._hub.get_active_offers(),
+        )
+        if not offers:
+            return SmartMatchResponse(offers=[], total=0, message="No active offers available")
+
+        now = datetime.utcnow()
+        member = self._member_store.get(request.member_id)
+        member_notifications_enabled = member.notifications_enabled if member else True
+        allowed, reason = self._constraints.can_deliver(
+            member_id=request.member_id,
+            amount=0.0,
+            now=now,
+            member_notifications_enabled=member_notifications_enabled,
+        )
+
+        # Score ALL candidates (not just best) — cap at 2×CANDIDATE_CAP for smart match
+        smart_cap = min(len(offers), _CANDIDATE_CAP * 2)
+        scored: list[tuple[OfferBrief, ClaudeScoreResult]] = []
+        for offer in offers[:smart_cap]:
+            result = await self._scorer.score(context, offer)
+            if result.score > _ACTIVATION_THRESHOLD:
+                scored.append((offer, result))
+
+        if not scored:
+            return SmartMatchResponse(offers=[], total=0, message="No offers scored above activation threshold")
+
+        # Rank: CTC-store offers (marketer_initiated / purchase_triggered) = priority 1
+        # Partner-triggered offers = priority 2. Within group: sort by score desc.
+        from src.backend.models.offer_brief import TriggerType
+        smart_items: list[SmartOfferItem] = []
+        for offer, result in scored:
+            is_partner = offer.trigger_type == TriggerType.partner_triggered
+            priority = 2 if is_partner else 1
+            outcome = ScoutOutcome.queued if not allowed else ScoutOutcome.activated
+            smart_items.append(SmartOfferItem(
+                offer_id=offer.offer_id,
+                score=result.score,
+                notification_text=result.notification_text,
+                outcome=outcome,
+                trigger_type="partner" if is_partner else "ctc",
+                priority=priority,
+                scoring_method=result.scoring_method,
+                queued=True if outcome == ScoutOutcome.queued else None,
+                delivery_time="08:00" if outcome == ScoutOutcome.queued else None,
+            ))
+
+        smart_items.sort(key=lambda x: (x.priority, -x.score))
+
+        # Audit only the top-1 offer (avoid audit spam for multi-offer)
+        top = smart_items[0]
+        top_offer, top_result = next(
+            (o, r) for o, r in scored if o.offer_id == top.offer_id
+        )
+        await self._audit.log_activation(ScoutActivationRecord(
+            member_id=request.member_id, offer_id=top.offer_id,
+            score=top_result.score, rationale=top_result.rationale,
+            scoring_method=top_result.scoring_method, outcome=top.outcome,
+        ))
+
+        return SmartMatchResponse(
+            offers=smart_items,
+            total=len(smart_items),
+            message=f"{len(smart_items)} offer(s) matched your route",
+        )
 
     async def _dispatch_outcome(
         self,

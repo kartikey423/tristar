@@ -144,6 +144,7 @@ def get_partner_trigger_service() -> PartnerTriggerService:
         fraud_service=get_fraud_service(),
         location_zone_service=get_location_zone_service(),
         holiday_service=get_canadian_holiday_service(),
+        store_fixtures=get_ctc_store_fixtures(),
     )
 
 

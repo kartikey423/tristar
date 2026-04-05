@@ -38,6 +38,7 @@ from src.backend.models.offer_brief import (
 )
 from src.backend.models.partner_event import PartnerPurchaseEvent
 from src.backend.services.canadian_holiday_service import CanadianHolidayService, TimeType
+from src.backend.services.ctc_store_fixtures import CTCStoreFixtures
 from src.backend.services.fraud_check_service import FraudBlockedError, FraudCheckService
 from src.backend.services.hub_api_client import HubApiClient
 from src.backend.services.location_zone_service import LocationZone, LocationZoneService
@@ -122,12 +123,14 @@ class PartnerTriggerService:
         fraud_service: FraudCheckService,
         location_zone_service: LocationZoneService,
         holiday_service: CanadianHolidayService,
+        store_fixtures: Optional[CTCStoreFixtures] = None,
     ) -> None:
         self._hub = hub_client
         self._fraud = fraud_service
         self._location_zone = location_zone_service
         self._holiday = holiday_service
         self._claude = Anthropic(api_key=settings.CLAUDE_API_KEY)
+        self._store_fixtures = store_fixtures or CTCStoreFixtures()
 
     def is_duplicate(self, event_id: str) -> bool:
         """Return True if this event_id was already processed within the dedup window."""
@@ -285,7 +288,7 @@ class PartnerTriggerService:
         self, event: PartnerPurchaseEvent, category: str,
         location_zone: LocationZone, time_type: "TimeType",
     ) -> tuple[str, str]:
-        """Return (objective, push_message) enriched with location + time context."""
+        """Return (objective, push_message) enriched with location, store, and payment split."""
         from src.backend.services.canadian_holiday_service import TimeType as TT
 
         display_category = category.replace("_", " ").title()
@@ -301,23 +304,41 @@ class PartnerTriggerService:
 
         # Time-based urgency copy
         time_copy = {
-            TT.long_weekend: "before the long weekend crowds hit — get your gear first",
-            TT.weekend: "this weekend — great time to stock up",
-            TT.weekday: "today — exclusive weekday pricing",
+            TT.long_weekend: "before the long weekend crowds hit",
+            TT.weekend: "this weekend",
+            TT.weekday: "today",
         }.get(time_type, "today")
 
         # Marketplace price comparison
         premium_mult = self._MARKETPLACE_PREMIUM.get(category, 1.12)
-        ctc_price_note = f"~{int((premium_mult - 1) * 100)}% cheaper than Amazon/online marketplace"
+        ctc_price_note = f"~{int((premium_mult - 1) * 100)}% cheaper than Amazon"
+
+        # Nearest CTC store — expand radius for partner trigger (partner stores may be farther)
+        nearby = self._store_fixtures.get_nearby(event.location, radius_km=10.0) if event.location else []
+        if nearby:
+            nearest = nearby[0]
+            store_line = f"Canadian Tire {nearest.store_name} ({nearest.distance_km:.1f}km away)"
+        else:
+            store_line = "your nearest Canadian Tire"
+
+        # 75/25 Triangle Rewards payment split copy
+        discount_pct = 15  # matches the offer construct value in _generate_offer
+        offer_value = event.purchase_amount * (discount_pct / 100)
+        max_points_value = offer_value * 0.75
+        min_cash_value = offer_value * 0.25
+        payment_line = (
+            f"Use up to 75% Triangle points (~${max_points_value:.0f} in points), "
+            f"pay min 25% by card (~${min_cash_value:.0f})"
+        )
 
         objective = (
             f"Cross-sell {product_hint} to {event.partner_name} customer"
             f" ({location_zone.value.replace('_', ' ')} / {time_type.value.replace('_', ' ')})"
         )
         message = (
-            f"You just stopped at {event.partner_name}! "
-            f"Canadian Tire has {product_hint} {time_copy}. "
-            f"{ctc_price_note}. Tap to see deals near you."
+            f"You stopped at {event.partner_name}! "
+            f"{store_line} has {product_hint} {time_copy}. "
+            f"{ctc_price_note}. {payment_line}. Tap to see deals."
         )
         return objective, message
 
@@ -345,13 +366,19 @@ class PartnerTriggerService:
                 event, category, location_zone, time_type
             )
         else:
+            nearby = self._store_fixtures.get_nearby(event.location, radius_km=10.0) if event.location else []
+            store_line = (
+                f"Canadian Tire {nearby[0].store_name} ({nearby[0].distance_km:.1f}km away)"
+                if nearby else "your nearest Canadian Tire"
+            )
             objective = (
                 f"Cross-sell Canadian Tire {display_category} to member who just visited "
                 f"{event.partner_name}"
             )
             push_message = (
-                f"You just visited {event.partner_name}! "
-                f"Get 15% off {display_category} at Canadian Tire. Offer valid 24h."
+                f"You visited {event.partner_name}! "
+                f"Get 15% off {display_category} at {store_line}. "
+                f"Use up to 75% Triangle points, pay min 25% by card. Offer valid 24h."
             )
 
         return OfferBrief(
