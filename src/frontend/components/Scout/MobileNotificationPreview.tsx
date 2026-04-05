@@ -200,20 +200,18 @@ export function MobileNotificationPreview({
   const notifTitle = hasMatch
     ? result.outcome === 'queued'
       ? 'Offer Scheduled for 8:00 AM'
-      : result.outcome === 'rate_limited'
-        ? 'New Canadian Tire Offer Ready'
-        : `Exclusive offer for you, ${memberFirstName}!`
+      : `Exclusive offer for you, ${memberFirstName}!`
     : 'Triangle Rewards Update';
 
-  // Prefer personalized recommendation message; fall back to backend notification_text
-  const notifBody = recommendationMsg
-    ?? (recommendedItem
-      ? `Best offer for you: ${recommendedItem.name} at ${recommendedItem.discountPct}% off — pay just $${recommendedItem.youPay.toFixed(2)} after Triangle Rewards.`
-      : hasMatch && result.notification_text
-        ? result.notification_text
-        : hasMatch
-          ? `You just earned ${pointsEarned.toLocaleString()} points at ${storeName}. Balance: ${totalRewardsPoints.toLocaleString()} pts ($${rewardsValue}).`
-          : result.message ?? 'No matching offer right now.');
+  // Short body for lock-screen listing — rewards-focused, item + amount
+  const notifBody = recommendedItem
+    ? `${recommendedItem.name} at ${recommendedItem.discountPct}% off — use up to $${recommendedItem.rewardsRedeemable.toFixed(2)} in Triangle Rewards. Pay just $${recommendedItem.youPay.toFixed(2)}.`
+    : hasMatch
+      ? `You just earned ${pointsEarned.toLocaleString()} pts at ${storeName}. Balance: ${totalRewardsPoints.toLocaleString()} pts ($${rewardsValue}).`
+      : result.message ?? 'No matching offer right now.';
+
+  // Full personalized text for the View Offer detail screen
+  const detailMsg = recommendationMsg ?? notifBody;
 
   // Partner cross-sell notification body — includes payment split
   const pushChannel = partnerGeneratedOffer?.channels?.find((c) => c.channel_type === 'push');
@@ -452,9 +450,7 @@ export function MobileNotificationPreview({
 
                 {/* Offer objective / personalized message */}
                 <p className="text-white/90 text-[13px] leading-snug">
-                  {partnerGeneratedOffer
-                    ? partnerGeneratedOffer.objective
-                    : (recommendationMsg ?? notifBody)}
+                  {partnerGeneratedOffer ? partnerGeneratedOffer.objective : detailMsg}
                 </p>
 
                 {/* Discount highlight */}
