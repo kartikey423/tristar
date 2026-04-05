@@ -128,6 +128,12 @@ interface MobileNotificationPreviewProps {
   isPartnerTrigger?: boolean;
   partnerBrandName?: string;
   partnerGeneratedOffer?: OfferBrief | null;
+  // Recommendation items for smart cross-sell
+  recommendedItemName?: string | null;
+  recommendedItemPrice?: number | null;
+  recommendedItemDiscountPct?: number | null;
+  // Net price after rewards for recommended item
+  netPriceAfterRewards?: number | null;
 }
 
 export function MobileNotificationPreview({
@@ -141,6 +147,10 @@ export function MobileNotificationPreview({
   isPartnerTrigger = false,
   partnerBrandName,
   partnerGeneratedOffer,
+  recommendedItemName = null,
+  recommendedItemPrice = null,
+  recommendedItemDiscountPct = null,
+  netPriceAfterRewards = null,
 }: MobileNotificationPreviewProps) {
   const time = useLiveTime();
   const lockDate = formatLockDate();
@@ -193,6 +203,11 @@ export function MobileNotificationPreview({
     : hasMatch
       ? `You just earned ${pointsEarned.toLocaleString()} points at ${storeName}. Balance: ${totalRewardsPoints.toLocaleString()} pts ($${rewardsValue}).`
       : result.message ?? 'No matching offer right now.';
+
+  // Smart recommendation body — shows recommended items + net price after rewards
+  const recommendationBody = recommendedItemName && recommendedItemDiscountPct
+    ? `Since you got ${itemName}, we recommend: ${recommendedItemName} at ${recommendedItemDiscountPct}% off. You'll pay $${(netPriceAfterRewards ?? recommendedItemPrice ?? 0).toFixed(2)} (with Triangle Points applied).`
+    : notifBody;
 
   // Partner cross-sell notification body — includes payment split
   const pushChannel = partnerGeneratedOffer?.channels?.find((c) => c.channel_type === 'push');
@@ -299,7 +314,7 @@ export function MobileNotificationPreview({
                   </svg>
                 }
                 title={notifTitle}
-                body={notifBody}
+                body={recommendationBody}
                 actionLabel={acceptState === 'loading' ? 'Activating…' : acceptState === 'accepted' ? '✓ Activated!' : 'View Offer →'}
                 onActionClick={acceptState === 'idle' ? handleAccept : undefined}
               />

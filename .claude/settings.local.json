@@ -108,7 +108,14 @@
       "Bash(powershell.exe -NoProfile -Command \"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; modal deploy modal_app.py 2>&1\")",
       "Bash(powershell.exe -NoProfile -File \"deploy_modal.ps1\")",
       "Bash(powershell.exe -NoProfile -Command \"$base = 'https://bhuvansingh6p--tristar-api-fastapi-app.modal.run'; Write-Host '=== Health ==='; \\(Invoke-WebRequest -Uri \\\\\"$base/health\\\\\" -UseBasicParsing\\).Content\" 2>&1)",
-      "Bash(modal secret:*)"
+      "Bash(modal secret:*)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(xargs rm:*)",
+      "Bash(ls:*)",
+      "Bash(cmd:*)",
+      "Bash(powershell:*)",
+      "Bash(grep -v \"^$\\\\|warning\\\\|Warning\\\\|UserWarning\\\\|pytest\\\\|INFO\\\\|PASSED\\\\|FAILED\\\\|Deprecation\\\\|pydantic\\\\|src\\\\|\\\\.py:\")",
+      "Bash(start \"\" \"/c/Users/KartikeyPuri/OneDrive - EPAM/CTC/Tristar_/tristar/docs/tristar-presentation.html\")"
     ]
   }
 }

@@ -755,6 +755,8 @@ export function ContextDashboard() {
     currentRewardsPoints: number;
     totalRewardsPoints: number;
     memberId: string;
+    nextBestItem?: { item: StoreItem; predictedDiscountPct: number } | null;
+    amountAfterRewards?: number | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshCount, setRefreshCount] = useState(0);
@@ -825,6 +827,24 @@ export function ContextDashboard() {
     if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
     setError(null);
 
+    const storeItems = STORE_INVENTORY[store.id] ?? STORE_ITEMS[store.brand];
+    const purchasedItem: StoreItem = { name: item.name, price: item.price, category: item.category };
+    const nextBestItem = predictNextBestItem(member.id, storeItems, purchasedItem);
+    
+    // Calculate net price after rewards (75/25 split)
+    const nextItemDiscountedPrice = nextBestItem
+      ? nextBestItem.item.price * (1 - nextBestItem.predictedDiscountPct / 100)
+      : null;
+    const maxRedeemable = nextItemDiscountedPrice ? nextItemDiscountedPrice * 0.75 : null;
+    const redeemValue = 
+      nextItemDiscountedPrice != null && maxRedeemable != null
+        ? Math.min(totalRewardsPoints * 0.01, maxRedeemable)
+        : null;
+    const amountAfterRewards =
+      nextItemDiscountedPrice != null && redeemValue != null
+        ? Math.max(nextItemDiscountedPrice * 0.25, nextItemDiscountedPrice - redeemValue)
+        : null;
+
     const summary = {
       store,
       item,
@@ -832,6 +852,8 @@ export function ContextDashboard() {
       currentRewardsPoints,
       totalRewardsPoints,
       memberId: member.id,
+      nextBestItem: nextBestItem ?? null,
+      amountAfterRewards: amountAfterRewards ?? null,
     };
 
     try {
@@ -1158,6 +1180,10 @@ export function ContextDashboard() {
               isPartnerTrigger={isPartnerTrigger}
               partnerBrandName={isPartnerTrigger ? purchaseSummary.store.name : undefined}
               partnerGeneratedOffer={partnerGeneratedOffer}
+              recommendedItemName={purchaseSummary.nextBestItem?.item.name ?? null}
+              recommendedItemPrice={purchaseSummary.nextBestItem?.item.price ?? null}
+              recommendedItemDiscountPct={purchaseSummary.nextBestItem?.predictedDiscountPct ?? null}
+              netPriceAfterRewards={purchaseSummary.amountAfterRewards ?? null}
             />
           </div>
 

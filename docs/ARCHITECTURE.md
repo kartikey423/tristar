@@ -2,7 +2,7 @@
 
 **Project:** Triangle Smart Targeting and Real-Time Activation
 **Hackathon:** CTC True North 2026 (March 9-18)
-**Last Updated:** 2026-03-26
+**Last Updated:** 2026-04-05
 
 ---
 
@@ -15,6 +15,11 @@ TriStar transforms the Triangle loyalty program from a reactive points ledger in
 2. **The Hub (Shared Context State)** - Central repository for approved offers ready for activation
 3. **Scout (Real-Time Activation Engine)** - Context-aware delivery system monitoring GPS, weather, time, and behavior
 
+**Three Offer Trigger Types:**
+- `marketer_initiated` — Marketer creates via Designer UI (draft → approved → active flow)
+- `purchase_triggered` — Auto-generated when a Triangle purchase webhook arrives at Scout
+- `partner_triggered` — Auto-generated when a partner purchase event (e.g. Tim Hortons) arrives
+
 ---
 
 ## System Overview
@@ -26,20 +31,24 @@ graph TB
         B[Claude API<br/>claude-sonnet-4-6]
         C[Offer Generator]
         D[OfferBrief Output]
-        E{Risk Validation<br/>Fraud Detection}
+        E{Fraud Detection<br/>Risk Validation}
         F[Export to Hub]
         G[Fraud Alert]
+        DS[Deal Scraper<br/>Weekly Deals / Flyer]
+        INV[Inventory Suggestions]
 
         A --> B
         B --> C
         C --> D
+        DS --> C
+        INV --> C
         D --> E
         E -->|Pass| F
         E -->|Fail| G
     end
 
-    subgraph "The Hub (Shared Context State)"
-        H[(Approved Offers<br/>Redis/In-Memory)]
+    subgraph "Layer 2: The Hub (Shared Context State)"
+        H[(Approved Offers<br/>In-Memory Store)]
         I[Status Management<br/>draft → approved → active → expired]
         J[Audit Log<br/>Append-Only]
 
@@ -48,55 +57,48 @@ graph TB
         I --> J
     end
 
-    subgraph "Layer 2: Scout (Real-Time Activation Engine)"
-        K[Context Signals]
-        L[Location/GPS<br/>Proximity to Store]
-        M[Weather API<br/>Temperature & Conditions]
-        N[Time/Day<br/>Hour, Day of Week]
-        O[Behavioral History<br/>Recent Purchases]
+    subgraph "Layer 3: Scout (Real-Time Activation Engine)"
+        K[Purchase Event Webhook<br/>POST /api/scout/purchase-event]
+        P2[Partner Event Webhook<br/>POST /api/scout/partner-trigger]
+        SM[POST /api/scout/match<br/>POST /api/scout/smart-match]
 
-        P[Context Matcher<br/>Semantic Scoring]
+        P[Claude AI Context Scoring<br/>+ Deterministic Fallback]
         Q{Score > 60?}
         R[Push Notification]
-        S[Queue for Later]
+        S[Queue for Later<br/>or Rate-Limited]
 
-        K --> L
-        K --> M
-        K --> N
-        K --> O
-
-        L --> P
-        M --> P
-        N --> P
-        O --> P
-
+        K --> SM
+        P2 --> PA[Partner Trigger Service<br/>Haiku classify + Sonnet generate]
+        SM --> P
         H --> P
         P --> Q
         Q -->|Yes| R
         Q -->|No| S
+        PA --> H
     end
 
-    T[Member App]
-    U[Activation Log]
-
-    R --> T
-    S --> U
+    DC[Delivery Constraints<br/>CASL, Rate-Limit, Dedup, Quiet Hours]
+    R --> DC
+    DC --> T[Member Notification]
+    SA[Scout Audit Log]
+    R --> SA
 
     style A fill:#e1f5ff
     style H fill:#fff4e1
     style K fill:#e8f5e8
     style T fill:#f0e8ff
+    style PA fill:#fce4ec
 ```
 
 ---
 
-## End-to-End Flow
+## End-to-End Flow: Marketer-Initiated Offer
 
 ```mermaid
 sequenceDiagram
     actor Marketer
     participant Designer as Designer UI
-    participant Claude as Claude API
+    participant Claude as Claude API (Sonnet)
     participant FraudScan as Fraud Detection
     participant Hub as The Hub
     participant Scout as Scout Engine
@@ -107,31 +109,166 @@ sequenceDiagram
     Claude->>Designer: Structured OfferBrief<br/>(Segment, Construct, Channels, KPIs)
 
     Designer->>FraudScan: Validate risk patterns
-    FraudScan->>Designer: Risk report (severity: low)
+    FraudScan->>Designer: Risk report (severity: low/medium/critical)
 
     Marketer->>Designer: Approve offer
     Designer->>Hub: Save offer (status: approved)
     Hub->>Hub: Status transition: approved → active
-    Hub->>Scout: Notify: New offer available
+    Hub->>Scout: Offer now visible in active pool
 
-    Note over Scout: Monitoring loop (1/sec)
+    Note over Scout: Awaiting purchase event
 
-    Member->>Scout: Context signal<br/>(GPS: 500m from store, Weather: cold)
-    Scout->>Hub: Fetch active offers
-    Hub->>Scout: Return offers (3 active)
+    Member->>Scout: POST /api/scout/match<br/>(member_id, GPS, purchase_category, rewards_earned)
+    Scout->>Hub: Fetch active offers (up to 5 candidates)
+    Hub->>Scout: Return active offers
 
-    Scout->>Scout: Semantic match scoring<br/>Location: 40pts, Weather: 20pts<br/>Total: 85/100
+    Scout->>Claude: Score context vs offer (3s timeout)
+    Claude->>Scout: score: 85, rationale, notification_text
 
-    Scout->>Member: Push notification<br/>"15% off Outdoor gear at Sport Chek<br/>1 block away. Valid for 2 hours."
+    Scout->>Scout: Check delivery constraints<br/>(CASL, 1/hr rate-limit, 24h dedup, quiet hours)
+    Scout->>Member: Push notification<br/>"15% off Outdoor gear at Sport Chek"
 
-    Member->>Scout: Tap notification
-    Scout->>Hub: Log activation (offer_id, member_id, timestamp)
+    Scout->>Hub: Log activation (offer_id, member_id, outcome)
     Hub->>Hub: Update audit trail
+```
 
-    Note over Member,Scout: Member redeems at store
+---
 
-    Scout->>Hub: Mark offer redeemed
-    Hub->>Hub: Status transition: active → expired
+## End-to-End Flow: Purchase-Triggered Offer
+
+```mermaid
+sequenceDiagram
+    participant Rewards as Triangle Rewards System
+    participant Scout as Scout Engine
+    participant Claude as Claude API (Sonnet)
+    participant FraudScan as Fraud Detection
+    participant Hub as The Hub
+    participant Member as Member App
+
+    Rewards->>Scout: POST /api/scout/purchase-event<br/>(member_id, store, category, amount, GPS)
+    Scout->>Scout: Verify HMAC webhook signature
+    Scout->>Scout: Reject if refund or duplicate event
+
+    Scout->>Claude: Generate OfferBrief for purchase context
+    Claude->>Scout: Structured OfferBrief (trigger_type=purchase_triggered)
+
+    Scout->>FraudScan: Validate risk patterns
+    FraudScan->>Scout: Risk cleared
+
+    Scout->>Hub: Save offer as status=active (valid_until=now+24h)
+
+    Scout->>Scout: Score context (Claude AI, 3s timeout)
+    Note over Scout: Falls back to deterministic scoring on timeout
+
+    alt Score > 60 and constraints pass
+        Scout->>Member: Push notification
+        Scout->>Hub: Log activation record
+    else Score ≤ 60 or constrained
+        Scout->>Hub: Log queued/rate_limited outcome
+    end
+```
+
+---
+
+## End-to-End Flow: Partner-Triggered Offer (Tim Hortons)
+
+```mermaid
+sequenceDiagram
+    participant Partner as Partner System (Tim Hortons)
+    participant Scout as Scout Engine
+    participant Haiku as Claude Haiku (classify)
+    participant Sonnet as Claude Sonnet (generate)
+    participant FraudScan as Fraud Detection
+    participant Hub as The Hub
+    participant Member as Member App
+
+    Partner->>Scout: POST /api/scout/partner-trigger<br/>(partner_id, member_id, amount, GPS)
+    Scout->>Scout: Validate partner auth token
+
+    Scout->>Haiku: Classify purchase context (few-shot)
+    alt Haiku success
+        Haiku->>Scout: CTC category (e.g. "outdoor")
+    else Haiku failure
+        Scout->>Scout: Use _PARTNER_FALLBACK_CATEGORIES
+    end
+
+    Scout->>Sonnet: Generate OfferBrief (trigger_type=partner_triggered)
+    Sonnet->>Scout: OfferBrief with PaymentSplit (75pts / 25cash)
+
+    Scout->>FraudScan: Validate — block if severity=critical
+    Scout->>Hub: Save as status=active (valid_until=now+24h)
+
+    Scout->>Scout: Score context
+    Scout->>Member: Push notification (async, HTTP 202 returned immediately)
+    Scout->>Hub: Log activation record
+```
+
+---
+
+## Smart Match — Multi-Offer Response
+
+```mermaid
+flowchart TD
+    A[POST /api/scout/smart-match] --> B[Enrich context concurrently:<br/>member profile, nearby stores, weather]
+    B --> C[Fetch active Hub offers]
+    C --> D[Score each offer with Claude AI<br/>max 5 candidates _CANDIDATE_CAP]
+    D --> E{Score > 60?}
+    E -->|Yes| F[Check delivery constraints<br/>CASL, rate-limit, dedup, quiet-hours]
+    E -->|No| G[Drop from results]
+    F -->|Pass| H[Add to results:<br/>CTC offers priority=1<br/>Partner offers priority=2]
+    F -->|Fail| I[Mark as queued/rate_limited]
+    H --> J[Sort: by priority then score]
+    I --> J
+    J --> K[Return SmartMatchResponse<br/>list of SmartOfferItem]
+```
+
+---
+
+## Context Matching Algorithm (Claude AI + Deterministic Fallback)
+
+```mermaid
+flowchart TD
+    A[Receive MatchRequest] --> B[Enrich context concurrently]
+    B --> B1[Fetch MemberProfile<br/>MockMemberProfileStore]
+    B --> B2[Find Nearby CTC Stores<br/>CTCStoreFixtures < 50km]
+    B --> B3[Fetch Weather<br/>OpenWeatherMap API]
+    B1 & B2 & B3 --> C
+
+    C[Build EnrichedMatchContext] --> D[Check SHA256 cache<br/>offer_id + category + hour_bucket + weather]
+    D -->|Cache hit| E[Return cached score<br/>ScoringMethod=cached]
+    D -->|Cache miss| F[Call Claude Sonnet<br/>asyncio.wait_for timeout=3s]
+
+    F -->|Success| G[Parse JSON response:<br/>score, rationale, notification_text<br/>ScoringMethod=claude]
+    F -->|TimeoutError or SDK error| H[Fallback: deterministic formula<br/>ScoringMethod=fallback]
+
+    H --> H1[Location: 0-40pts<br/>< 0.5km=40, < 1km=30, < 2km=20, > 2km=0]
+    H --> H2[Time: 0-30pts<br/>exact match=30, day only=20, none=0]
+    H --> H3[Weather: 0-20pts<br/>exact match=20, none=0]
+    H --> H4[Behavior: 0-10pts<br/>aligned=10, none=0]
+    H1 & H2 & H3 & H4 --> I[Sum → deterministic score]
+
+    G --> J{Total score > 60?}
+    I --> J
+
+    J -->|Yes| K[Check Delivery Constraints]
+    J -->|No| L[NoMatchResponse<br/>or queue]
+
+    K --> K1{CASL consent?}
+    K1 -->|No| M[Block — log outcome]
+    K1 -->|Yes| K2{Rate limit:<br/>1 notif/member/hr?}
+    K2 -->|Exceeded| N[Outcome=rate_limited<br/>retry_after_seconds]
+    K2 -->|OK| K3{24h dedup:<br/>same offer sent?}
+    K3 -->|Duplicate| N
+    K3 -->|OK| K4{Quiet hours:<br/>10pm-8am?}
+    K4 -->|Yes| O[Outcome=queued<br/>delivery_time=next 8am]
+    K4 -->|No| P[Outcome=activated<br/>Send notification]
+
+    P --> Q[Log ScoutActivationRecord<br/>no GPS — CON-002]
+
+    style E fill:#fff9c4
+    style G fill:#c8e6c9
+    style H fill:#ffecb3
+    style P fill:#c8e6c9
 ```
 
 ---
@@ -140,53 +277,82 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    subgraph Frontend
-        A[React 19 App<br/>TypeScript]
-        A --> B[Designer UI<br/>OfferBriefForm]
-        A --> C[Scout UI<br/>ContextDashboard]
-        A --> D[Hub UI<br/>OfferList]
+    subgraph Frontend["Frontend (React 19 + Next.js 15)"]
+        A[Next.js App Router<br/>TypeScript]
+        A --> B[Designer UI<br/>OfferBriefForm, FraudPanel]
+        A --> C[Scout UI<br/>ContextDashboard, ActivationLog]
+        A --> D[Hub UI<br/>OfferList, StatusBadge]
     end
 
-    subgraph Backend
-        E[FastAPI<br/>Python 3.11+]
+    subgraph Backend["Backend (FastAPI, Python 3.11+)"]
+        E[FastAPI App<br/>main.py]
         E --> F[Designer API<br/>/api/designer/*]
         E --> G[Scout API<br/>/api/scout/*]
         E --> H[Hub API<br/>/api/hub/*]
+
+        F --> F1[ClaudeApiService<br/>3x retry, 5min cache]
+        F --> F2[FraudCheckService]
+        F --> F3[DealScraperService]
+        F --> F4[InventoryService]
+
+        G --> G1[ScoutMatchService<br/>match pipeline orchestrator]
+        G --> G2[ClaudeContextScoringService<br/>AI scoring + cache]
+        G --> G3[ContextScoringService<br/>deterministic fallback]
+        G --> G4[DeliveryConstraintService<br/>CASL, rate-limit, dedup, quiet-hrs]
+        G --> G5[PartnerTriggerService<br/>Haiku classify + Sonnet generate]
+        G --> G6[PurchaseEventHandler<br/>webhook dedup + validation]
+        G --> G7[NotificationService]
+        G --> G8[ScoutAuditService]
+
+        H --> H1[HubStore<br/>in-memory offer store]
+        H --> H2[HubAuditService]
+        H --> H3[AuditLogService]
     end
 
-    subgraph "External Services"
-        I[Claude API<br/>claude-sonnet-4-6]
-        J[Weather API<br/>OpenWeatherMap]
-        K[Mock Triangle Data<br/>MCP Server]
+    subgraph External["External Services"]
+        I[Claude Sonnet 4-6<br/>offer generation + scoring]
+        J[Claude Haiku<br/>partner context classify]
+        K[OpenWeatherMap API<br/>weather conditions]
     end
 
-    subgraph "Data Layer"
-        L[(Redis Cache<br/>Hub State)]
-        M[(SQLite/PostgreSQL<br/>Audit Log)]
+    subgraph Data["Data Layer"]
+        L[(In-Memory HubStore<br/>offer lifecycle)]
+        M[(In-Memory Audit Log<br/>activation records)]
+    end
+
+    subgraph Fixtures["Mock / Fixture Data"]
+        N[CTCStoreFixtures<br/>Canadian Tire store locations]
+        O[MockMemberProfileStore<br/>member segments + history]
+        P[CanadianHolidayService<br/>long weekend detection]
     end
 
     B <-->|HTTP/JSON| F
     C <-->|HTTP/JSON| G
     D <-->|HTTP/JSON| H
 
-    F <-->|Anthropic SDK| I
-    F <-->|MCP Protocol| K
+    F1 <-->|Anthropic SDK| I
+    G2 <-->|Anthropic SDK| I
+    G5 <-->|Anthropic SDK| J
+    G5 <-->|Anthropic SDK| I
 
-    G <-->|HTTP| J
-    G <-->|MCP Protocol| K
+    G2 --> K
 
-    H <-->|Read/Write| L
-    H <-->|Append| M
+    H1 --> L
+    H2 --> M
+
+    G1 --> N
+    G1 --> O
+    G1 --> P
 
     style A fill:#61dafb
     style E fill:#009688
     style I fill:#e07c3e
-    style L fill:#dc382d
+    style J fill:#e07c3e
 ```
 
 ---
 
-## Data Flow: OfferBrief Schema
+## OfferBrief Schema
 
 ```mermaid
 classDiagram
@@ -198,112 +364,164 @@ classDiagram
         +Channel[] channels
         +KPIs kpis
         +RiskFlags risk_flags
+        +OfferStatus status
+        +TriggerType trigger_type
         +datetime created_at
-        +string status
-        +validateSchema() boolean
+        +datetime valid_until
+        +string source_deal_id
+    }
+
+    class TriggerType {
+        <<enumeration>>
+        marketer_initiated
+        purchase_triggered
+        partner_triggered
+    }
+
+    class OfferStatus {
+        <<enumeration>>
+        draft
+        approved
+        active
+        expired
     }
 
     class Segment {
         +string name
         +string definition
-        +number estimated_size
+        +int estimated_size
         +string[] criteria
-        +string[] exclusions
+    }
+
+    class PaymentSplit {
+        +float points_max_pct = 75.0
+        +float cash_min_pct = 25.0
     }
 
     class Construct {
         +string type
-        +number value
+        +float value
         +string description
-        +datetime valid_from
-        +datetime valid_until
+        +PaymentSplit payment_split
     }
 
     class Channel {
-        +string channel_type
-        +number priority
-        +string[] delivery_rules
+        +ChannelType channel_type
+        +int priority
+        +string message_template
     }
 
     class KPIs {
-        +number expected_redemption_rate
-        +number expected_uplift_pct
-        +number estimated_cost_per_redemption
-        +number roi_projection
-        +number target_reach
+        +float expected_redemption_rate
+        +float expected_uplift_pct
+        +int target_segment_size
     }
 
     class RiskFlags {
-        +boolean over_discounting
-        +boolean cannibalization
-        +boolean frequency_abuse
-        +boolean offer_stacking
+        +bool over_discounting
+        +bool cannibalization
+        +bool frequency_abuse
+        +bool offer_stacking
+        +RiskSeverity severity
         +string[] warnings
-        +string severity
     }
 
+    OfferBrief --> TriggerType
+    OfferBrief --> OfferStatus
     OfferBrief --> Segment
     OfferBrief --> Construct
     OfferBrief --> Channel
     OfferBrief --> KPIs
     OfferBrief --> RiskFlags
+    Construct --> PaymentSplit
 
-    note for OfferBrief "Central data structure\nShared between Designer, Hub, Scout\nValidated with Zod (TS) + Pydantic (Python)"
+    note for OfferBrief "AUTO_ACTIVE_TRIGGER_TYPES:\npurchase_triggered + partner_triggered\nsave directly to status=active.\nMarketer-initiated: draft → approved → active."
+    note for PaymentSplit "Triangle Rewards 75/25 split:\nmax 75% paid in Triangle points\nmin 25% paid cash/card"
 ```
 
 ---
 
-## Context Matching Algorithm
+## Hub Offer Lifecycle
 
 ```mermaid
-flowchart TD
-    A[Receive Context Signal] --> B{Location within 2km?}
+stateDiagram-v2
+    [*] --> draft : marketer_initiated (Designer saves)
+    draft --> approved : Marketer approves in Designer UI
+    approved --> active : Hub status transition
+    active --> expired : Offer redeemed or valid_until passed
 
-    B -->|Yes, <0.5km| C[Location: +40 points]
-    B -->|Yes, 0.5-1km| D[Location: +30 points]
-    B -->|Yes, 1-2km| E[Location: +20 points]
-    B -->|No, >2km| F[Location: +0 points]
+    [*] --> active : purchase_triggered or partner_triggered\n(auto-active, valid_until = now+24h)
+    active --> expired
 
-    C --> G{Time matches preferred hours?}
-    D --> G
-    E --> G
-    F --> G
-
-    G -->|Exact match| H[Time: +30 points]
-    G -->|Day match only| I[Time: +20 points]
-    G -->|No match| J[Time: +0 points]
-
-    H --> K{Weather trigger match?}
-    I --> K
-    J --> K
-
-    K -->|Exact match| L[Weather: +20 points]
-    K -->|No match| M[Weather: +0 points]
-
-    L --> N{Behavior aligned with recent activity?}
-    M --> N
-
-    N -->|Yes| O[Behavior: +10 points]
-    N -->|No| P[Behavior: +0 points]
-
-    O --> Q[Calculate Total Score]
-    P --> Q
-
-    Q --> R{Total score > 60?}
-
-    R -->|Yes| S[Activate Offer<br/>Send Notification]
-    R -->|No| T[Queue for Later<br/>Log Context]
-
-    S --> U[Log to Hub Audit Trail]
-    T --> V[Increment Queue Counter]
-
-    style A fill:#e1f5ff
-    style S fill:#c8e6c9
-    style T fill:#ffecb3
-    style R fill:#fff9c4
-
-    note1[Scoring Breakdown<br/>Location: 40pts max<br/>Time: 30pts max<br/>Weather: 20pts max<br/>Behavior: 10pts max<br/>Total: 100pts possible]
+    note right of draft
+        Only marketer_initiated offers
+        start as draft
+    end note
+    note right of active
+        Scout fetches these for
+        context scoring
+    end note
 ```
+
+---
+
+## Scout API Endpoints
+
+```mermaid
+graph LR
+    subgraph Scout["POST /api/scout/"]
+        A[purchase-event<br/>Triangle rewards webhook<br/>HMAC-signed]
+        B[match<br/>Score single best offer<br/>Returns MatchResponse]
+        C[smart-match<br/>Score all route-relevant offers<br/>Returns SmartMatchResponse]
+        D[partner-trigger<br/>Partner purchase event<br/>Haiku+Sonnet pipeline]
+        E[activation-log<br/>GET audit trail]
+    end
+
+    A -->|async 202| H[PurchaseEventHandler]
+    B --> M[ScoutMatchService]
+    C --> M
+    D -->|async 202| PT[PartnerTriggerService]
+    E --> SA[ScoutAuditService]
+
+    H --> M
+    M --> CS[ClaudeContextScoringService]
+    M --> DC[DeliveryConstraintService]
+    PT --> Hub[(Hub Store)]
+```
+
+---
+
+## Security Architecture
+
+```mermaid
+graph LR
+    A[User Login] --> B[Azure AD B2C]
+    B --> C{Valid Credentials?}
+    C -->|Yes| D[Issue JWT Token<br/>1h expiry, HS256]
+    C -->|No| E[Return 401]
+
+    D --> F[Frontend stores token]
+    F --> G[API Request with Bearer token]
+    G --> H[FastAPI HTTPBearer dep]
+    H --> I{Token valid?}
+    I -->|Yes| J[Process request]
+    I -->|No| K[Return 401]
+
+    L[Scout Webhooks] --> M{ENVIRONMENT != development?}
+    M -->|Yes| N[HMAC signature check<br/>SCOUT_WEBHOOK_SECRET]
+    M -->|No| O[Skip signature check]
+    N -->|Valid| J
+    N -->|Invalid| P[Return 401]
+
+    Q[Partner Endpoints] --> R[scout_auth dependency<br/>partner token validation]
+    R --> J
+```
+
+**Auth Notes:**
+- Hub GET endpoints are **public** (no auth required) — read-only offer browsing
+- Designer mutation endpoints require JWT
+- Scout webhooks use HMAC signature verification (skipped in `development` env)
+- Partner trigger endpoints use per-partner token auth via `scout_auth` dependency
 
 ---
 
@@ -311,40 +529,39 @@ flowchart TD
 
 ```mermaid
 graph TB
-    subgraph "GitHub"
-        A[GitHub Repository<br/>tristar-hackathon]
+    subgraph GitHub
+        A[GitHub Repository]
         B[GitHub Actions<br/>CI/CD Pipeline]
     end
 
-    subgraph "Azure Cloud"
-        subgraph "Compute"
+    subgraph Azure["Azure Cloud"]
+        subgraph Compute
             C[App Service<br/>React Frontend]
             D[Azure Functions<br/>FastAPI Backend]
         end
 
-        subgraph "Data & Cache"
-            E[Azure Redis Cache<br/>Hub State]
+        subgraph Data
+            E[Azure Redis Cache<br/>Hub State + Delivery Constraint]
             F[Azure SQL Database<br/>Audit Log]
         end
 
-        subgraph "Monitoring & Secrets"
+        subgraph Ops
             G[Application Insights<br/>Telemetry & Logs]
             H[Key Vault<br/>Secrets Management]
         end
 
-        subgraph "Networking"
+        subgraph Network
             I[Azure CDN<br/>Static Assets]
             J[API Management<br/>Rate Limiting & Auth]
         end
     end
 
-    K[External APIs]
-    L[Claude API]
-    M[Weather API]
+    K[Anthropic API<br/>Sonnet + Haiku]
+    L[OpenWeatherMap API]
 
     A --> B
-    B -->|Deploy Frontend| C
-    B -->|Deploy Backend| D
+    B -->|Deploy| C
+    B -->|Deploy| D
 
     C --> I
     C --> J
@@ -353,27 +570,11 @@ graph TB
     D --> E
     D --> F
     D --> H
+    D --> K
+    D --> L
 
     C --> G
     D --> G
-
-    J --> L
-    J --> M
-
-    K --> L
-    K --> M
-
-    style A fill:#181717
-    style C fill:#0078d4
-    style D fill:#0078d4
-    style E fill:#dc382d
-    style F fill:#0078d4
-    style G fill:#0078d4
-    style H fill:#0078d4
-
-    note1[Development:<br/>- Frontend: localhost:3000<br/>- Backend: localhost:8000<br/>- Redis: localhost:6379]
-
-    note2[Production:<br/>- Frontend: https://tristar.azurewebsites.net<br/>- Backend: https://tristar-api.azurefunctions.net<br/>- Redis: tristar-cache.redis.cache.windows.net]
 ```
 
 ---
@@ -381,105 +582,40 @@ graph TB
 ## Technology Stack
 
 ### Frontend
-- **Framework:** React 19 (with Server Components)
+- **Framework:** React 19 + Next.js 15 (App Router)
 - **Language:** TypeScript 5.x (strict mode)
-- **Styling:** Tailwind CSS or Styled Components
-- **State Management:** React Context + `useOptimistic`
+- **Styling:** Tailwind CSS
+- **State:** React Context + `useOptimistic`
 - **Data Fetching:** React.use() with Suspense
 - **Forms:** React Server Actions
 - **Testing:** Jest + React Testing Library
-- **Build Tool:** Vite or Next.js 15+
 
 ### Backend
 - **Framework:** FastAPI 0.110+
 - **Language:** Python 3.11+
 - **Validation:** Pydantic v2
-- **Async Runtime:** asyncio with uvicorn
-- **Database:** SQLite (dev), PostgreSQL (prod)
-- **Cache:** Redis 7.x
-- **Testing:** Pytest + httpx
-- **Logging:** loguru
+- **Async:** asyncio with uvicorn
+- **Data Store:** In-memory dict (Hub), dev; Redis (prod)
+- **Testing:** Pytest + httpx AsyncClient
+- **Logging:** loguru (structured JSON)
 
 ### AI & External Services
-- **LLM:** Claude API (claude-sonnet-4-6)
+- **Offer generation:** Claude Sonnet 4-6 (Designer + Scout purchase/partner triggers)
+- **Partner classification:** Claude Haiku (fast few-shot classification)
+- **Context scoring:** Claude Sonnet 4-6 with 3s timeout + deterministic fallback
 - **Weather:** OpenWeatherMap API
-- **Mock Data:** MCP Server (@tristar/mock-triangle-data)
-
-### Infrastructure
-- **Cloud:** Microsoft Azure
-- **Compute:** App Service (frontend), Azure Functions (backend)
-- **Data:** Azure Redis Cache, Azure SQL Database
-- **Monitoring:** Application Insights
-- **Secrets:** Azure Key Vault
-- **CI/CD:** GitHub Actions
-- **IaC:** Terraform
-
----
-
-## Security Architecture
-
-### Authentication & Authorization
-```mermaid
-graph LR
-    A[User Login] --> B[Azure AD B2C]
-    B --> C{Valid Credentials?}
-    C -->|Yes| D[Issue JWT Token]
-    C -->|No| E[Return 401]
-
-    D --> F[Frontend Stores Token]
-    F --> G[API Request with Token]
-    G --> H[API Gateway Validates Token]
-    H --> I{Token Valid?}
-    I -->|Yes| J[Forward to Backend]
-    I -->|No| K[Return 401]
-
-    J --> L[Backend Checks Permissions]
-    L --> M{Authorized?}
-    M -->|Yes| N[Process Request]
-    M -->|No| O[Return 403]
-```
-
-### Data Flow Security
-- **In Transit:** TLS 1.3 for all HTTP traffic
-- **At Rest:** Azure Storage encryption (256-bit AES)
-- **Secrets:** Azure Key Vault with managed identities
-- **PII Handling:** Log member_id only, no names/emails/addresses
-- **Rate Limiting:** 100 requests/min per IP (API Management)
 
 ---
 
 ## Performance Metrics
 
-| Metric | Target | Measurement Method |
-|--------|--------|-------------------|
+| Metric | Target | Notes |
+|--------|--------|-------|
 | API Response Time (p95) | <200ms | Application Insights |
 | Frontend Page Load | <2s (FCP) | Lighthouse CI |
-| Context Matching Latency | <500ms | Custom timer |
-| Cache Hit Rate | >80% | Redis INFO stats |
-| Offer Generation Time | <5s | Claude API latency |
-
----
-
-## Scalability Considerations
-
-### Current Scale (Hackathon Demo)
-- **Users:** ~100 concurrent demo users
-- **Offers:** ~1,000 active offers in Hub
-- **Context Signals:** ~10 signals/sec
-- **Notifications:** ~5 notifications/sec
-
-### Production Scale (Future)
-- **Users:** 10M+ Triangle members
-- **Offers:** 100K+ active offers
-- **Context Signals:** 10K signals/sec
-- **Notifications:** 1K notifications/sec
-
-### Scaling Strategy
-1. **Horizontal Scaling:** Azure Functions auto-scale based on queue depth
-2. **Caching:** Redis cluster with read replicas
-3. **Database:** Sharding by member_id (10M members = 10 shards)
-4. **CDN:** Azure CDN for static assets and API responses
-5. **Async Processing:** Queue context signals, process in batches
+| Scout context scoring | <3s | Claude timeout budget |
+| Cache Hit Rate | >80% | 3-hour bucket SHA256 cache |
+| Offer Generation Time | <5s | Claude Sonnet p95 |
 
 ---
 
@@ -487,96 +623,35 @@ graph LR
 
 ```mermaid
 graph LR
-    A[Local Development] --> B[Feature Branch]
-    B --> C[Commit with Tests]
+    A[Local Dev] --> B[Feature Branch]
+    B --> C[Commit + Tests]
     C --> D[Push to GitHub]
     D --> E[CI Pipeline]
 
-    E --> F[Run Linters]
-    E --> G[Run Unit Tests]
-    E --> H[Run Integration Tests]
-    E --> I[Security Scan]
+    E --> F[Ruff + Black]
+    E --> G[pytest unit]
+    E --> H[pytest integration]
+    E --> I[Security scan]
 
-    F --> J{All Checks Pass?}
-    G --> J
-    H --> J
-    I --> J
-
-    J -->|Yes| K[Create Pull Request]
+    F & G & H & I --> J{Pass?}
+    J -->|Yes| K[PR → main]
     J -->|No| L[Fix Issues]
     L --> C
 
     K --> M[Code Review]
     M --> N{Approved?}
-    N -->|Yes| O[Merge to Main]
+    N -->|Yes| O[Merge to main]
     N -->|No| L
 
     O --> P[Deploy to Staging]
-    P --> Q[E2E Tests on Staging]
-    Q --> R{Tests Pass?}
+    P --> Q[E2E Tests]
+    Q --> R{Pass?}
     R -->|Yes| S[Deploy to Production]
     R -->|No| T[Rollback & Debug]
 ```
 
 ---
 
-## Monitoring & Observability
-
-### Metrics to Track
-1. **Business Metrics:**
-   - Offer generation rate (offers/hour)
-   - Activation rate (notifications/hour)
-   - Redemption rate (redeemed/activated)
-   - ROI per offer (revenue - cost)
-
-2. **Technical Metrics:**
-   - API latency (p50, p95, p99)
-   - Error rate (5xx responses)
-   - Cache hit rate
-   - Database query time
-
-3. **User Experience:**
-   - Frontend page load time
-   - Time to interactive (TTI)
-   - Notification delivery success rate
-
-### Dashboards
-- **Application Insights:** Real-time telemetry, logs, traces
-- **Grafana:** Custom dashboards for business metrics
-- **Azure Monitor:** Infrastructure health, resource utilization
-
----
-
-## Disaster Recovery
-
-### Backup Strategy
-- **Redis:** Daily snapshots to Azure Blob Storage
-- **SQL Database:** Automated backups (7-day retention)
-- **Code:** Git repository (multiple remotes)
-
-### Recovery Time Objectives (RTO)
-- **Database Failure:** <15 minutes (restore from backup)
-- **Redis Failure:** <5 minutes (failover to replica)
-- **Complete Region Failure:** <4 hours (redeploy to new region)
-
----
-
-## Future Enhancements
-
-### Phase 2 (Post-Hackathon)
-- **Machine Learning:** Predictive context matching using historical data
-- **A/B Testing:** Experimentation framework for offer variants
-- **Multi-Language:** French language support for Quebec members
-- **Partner Integration:** Real-time inventory sync with stores
-
-### Phase 3 (Production)
-- **Mobile Apps:** Native iOS/Android apps with offline support
-- **Voice Activation:** Integration with Alexa/Google Assistant
-- **Blockchain:** Immutable audit trail for compliance
-- **AI Agents:** Multi-agent orchestration for complex campaigns
-
----
-
-**Document Version:** 1.0
-**Generated:** 2026-03-26
+**Document Version:** 2.0
+**Generated:** 2026-04-05
 **Maintainers:** TriStar Hackathon Team
