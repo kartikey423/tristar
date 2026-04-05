@@ -174,7 +174,8 @@ class TestClaudeContextScoringService:
         assert score == 0.0
         assert "Parse error" in rationale
 
-    def test_context_hash_excludes_member_id(self):
+    def test_context_hash_includes_member_id_for_personalisation(self):
+        """Different members must get different cache keys so each gets unique notifications."""
         svc = ClaudeContextScoringService.__new__(ClaudeContextScoringService)
         svc._cache = {}
         svc._fallback = MagicMock()
@@ -184,7 +185,7 @@ class TestClaudeContextScoringService:
         ctx2 = _make_context()
         ctx2.request.member_id = "demo-999"  # Different member
 
-        # Same offer + context signals → same hash regardless of member_id
+        # Different member_id → different hash → different personalised notification
         h1 = svc._context_hash(ctx1, offer)
         h2 = svc._context_hash(ctx2, offer)
-        assert h1 == h2
+        assert h1 != h2

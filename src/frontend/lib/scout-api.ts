@@ -134,6 +134,39 @@ export async function callPartnerTrigger(
   return res.json() as Promise<PartnerTriggerApiResponse>;
 }
 
+// ── Customer notification acceptance — auto-approve offer ─────────────────────
+
+/**
+ * Customer tapped "View Offer →" on their phone notification.
+ * Calls POST /api/hub/offers/{offer_id}/customer-accept which auto-approves
+ * and activates the offer without requiring marketer action.
+ *
+ * Uses NEXT_PUBLIC_API_URL (browser-safe) + NEXT_PUBLIC_MARKETER_JWT for auth.
+ */
+export async function customerAcceptOffer(offerId: string): Promise<{ success: boolean; message: string }> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+  const jwt = process.env.NEXT_PUBLIC_MARKETER_JWT ?? '';
+
+  const res = await fetch(`${base}/api/hub/offers/${encodeURIComponent(offerId)}/customer-accept`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const body = await res.json();
+      detail = body?.detail ?? detail;
+    } catch { /* ignore */ }
+    return { success: false, message: detail };
+  }
+
+  return { success: true, message: 'Offer accepted and activated!' };
+}
+
 // ── Activation log entry (from GET /api/scout/activation-log) ─────────────────
 
 export interface ActivationLogEntry {

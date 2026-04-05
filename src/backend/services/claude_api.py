@@ -343,7 +343,7 @@ class ClaudeApiService:
                 )
             except Exception as e:
                 last_error = e
-                logger.error(f"Unexpected Claude API error (attempt {attempt}): {e}")
+                logger.error("Unexpected Claude API error (attempt {}): {}", attempt, str(e)[:200])
 
             if attempt < len(self._retry_delays):
                 await asyncio.sleep(delay)
@@ -413,7 +413,8 @@ class ClaudeApiService:
             offer = self._parse_offer_brief(raw, TriggerType.marketer_initiated)
         except (ClaudeApiError, ClaudeResponseParseError) as e:
             logger.warning(
-                f"Claude API unavailable, falling back to deterministic generation: {e}",
+                "Claude API unavailable, falling back to deterministic generation: {}",
+                str(e)[:200],
                 extra={"objective": objective[:80]},
             )
             offer = _build_mock_offer(objective, TriggerType.marketer_initiated)
@@ -459,7 +460,7 @@ class ClaudeApiService:
             raw = await self._call_with_retry(prompt)
             offer = self._parse_offer_brief(raw, TriggerType.purchase_triggered)
         except (ClaudeApiError, ClaudeResponseParseError) as e:
-            logger.warning(f"Claude API unavailable for purchase context, using fallback: {e}")
+            logger.warning("Claude API unavailable for purchase context, using fallback: {}", str(e)[:200])
             objective = f"Personalized offer for {ctx.member_segment} member at {ctx.store_name}"
             offer = _build_mock_offer(objective, TriggerType.purchase_triggered)
 

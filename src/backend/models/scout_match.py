@@ -74,6 +74,33 @@ class NoMatchResponse(BaseModel):
     message: str
 
 
+class SmartOfferItem(BaseModel):
+    """One scored offer in a smart multi-offer response."""
+
+    offer_id: str
+    score: float
+    notification_text: str
+    outcome: ScoutOutcome
+    trigger_type: str  # "ctc" | "partner"
+    priority: int      # 1 = highest (CTC first, then partner, then by score)
+    scoring_method: ScoringMethod
+    queued: Optional[bool] = None
+    delivery_time: Optional[str] = None
+
+
+class SmartMatchResponse(BaseModel):
+    """Multi-offer response for POST /api/scout/smart-match.
+
+    Returns all route-relevant offers: CTC stores first (priority=1), then
+    partner-triggered offers (priority=2), sorted by priority then score.
+    Satisfies Point 5: route-aware, multi-offer, CTC-first ranking.
+    """
+
+    offers: list[SmartOfferItem]
+    total: int
+    message: str = ""
+
+
 # ─── Internal enriched context (never serialised to API) ──────────────────────
 
 

@@ -23,7 +23,7 @@ from src.backend.core.security import verify_webhook_signature
 from src.backend.models.offer_brief import OfferBrief
 from src.backend.models.partner_event import PartnerPurchaseEvent, PartnerTriggerResponse
 from src.backend.models.purchase_event import PurchaseContextRequest, PurchaseEventPayload
-from src.backend.models.scout_match import MatchRequest, MatchResponse, NoMatchResponse
+from src.backend.models.scout_match import MatchRequest, MatchResponse, NoMatchResponse, SmartMatchResponse
 from src.backend.services.audit_log_service import AuditLogService
 from src.backend.services.context_scoring_service import ContextScoringService
 from src.backend.services.delivery_constraint_service import DeliveryConstraintService
@@ -236,6 +236,35 @@ async def scout_match(
 
     result = await match_service.match(request)
     return result
+
+
+@router.post(
+    "/smart-match",
+    response_model=SmartMatchResponse,
+    summary="Route-aware multi-offer match — returns ALL relevant offers, CTC first",
+    description=(
+        "Scores ALL active Hub offers against the member's context. Returns offers above the "
+        "activation threshold (score > 60) ranked by: CTC store offers first (priority=1), "
+        "partner-triggered offers second (priority=2), then by score descending. "
+        "This replaces single-offer match with a richer multi-offer response for the Scout UI."
+    ),
+)
+async def smart_scout_match(
+    request: MatchRequest,
+    match_service: ScoutMatchService = Depends(get_scout_match_service),
+) -> SmartMatchResponse:
+    """POST /api/scout/smart-match — route-aware, CTC-first, multi-offer activation."""
+    if not settings.SCOUT_MATCH_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Scout match endpoint is disabled (SCOUT_MATCH_ENABLED=false)",
+        )
+    if request.purchase_location is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="purchase_location is required for Scout smart match",
+        )
+    return await match_service.smart_match(request)
 
 
 @router.get(
