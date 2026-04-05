@@ -161,18 +161,19 @@ class TestScoutMatchService:
         # scorer.score should be called at most 5 times
         assert svc._scorer.score.call_count <= 5
 
-    async def test_early_exit_on_first_match(self):
-        """Early-exit: stop scoring after first offer scores > 60."""
+    async def test_scores_all_candidates_returns_best(self):
+        """match() scores all candidates and returns the highest-scoring offer."""
         offers = [_make_offer(f"offer-{i}") for i in range(5)]
         scorer = AsyncMock()
-        scorer.score.return_value = _make_score_result(85.0)  # First offer matches
+        # All score above threshold — match() must score all to pick the best
+        scorer.score.return_value = _make_score_result(85.0)
 
         svc = _make_service(active_offers=offers)
         svc._scorer = scorer
 
         await svc.match(_make_request())
-        # Only 1 call — early exit after first match
-        assert scorer.score.call_count == 1
+        # All 5 candidates scored (no early exit — we find the best, not just first)
+        assert scorer.score.call_count == 5
 
     async def test_record_delivery_called_on_activation(self):
         svc = _make_service(
