@@ -340,20 +340,23 @@ export function MobileNotificationPreview({
               />
             )}
 
-            {/* Rate-limited — soft reminder */}
+            {/* Rate-limited — show offer with view action */}
             {hasMatch && result.outcome === 'rate_limited' && (
               <LockNotifCard
                 delay={600}
-                accent="bg-gray-600"
+                highlight
+                accent="bg-[#E4003A]"
                 appName="Triangle Rewards"
-                timeLabel="earlier"
+                timeLabel="now"
                 appIcon={
                   <svg viewBox="0 0 20 20" fill="white" className="w-3.5 h-3.5">
                     <polygon points="10,2 18,17 2,17" />
                   </svg>
                 }
-                title="You already have an active offer!"
-                body={`Balance: ${totalRewardsPoints.toLocaleString()} pts ($${rewardsValue}) · Check the app for your current deal.`}
+                title={notifTitle}
+                body={notifBody}
+                actionLabel={acceptState === 'loading' ? 'Activating…' : acceptState === 'accepted' ? '✓ Activated!' : 'View Offer →'}
+                onActionClick={acceptState === 'idle' ? () => setAcceptState('viewing') : undefined}
               />
             )}
 
