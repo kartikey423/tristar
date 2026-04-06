@@ -387,43 +387,25 @@
 
 /* ── Divider slides (Demo / Thank You) ─────────────────────── */
 .slide-divider {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
+  display: block !important;
   grid-template-columns: unset !important;
-  background: #1e1e1e !important;
+  background: #2a2a2a !important;
   position: relative;
 }
 .sd-vline-wrap {
-  position: absolute; left: 44px; top: 86px; bottom: 54px;
-  display: flex; gap: 5px;
+  position: absolute; left: 36px; top: 76px; bottom: 108px;
+  display: flex; gap: 10px;
 }
-.sd-vl-t { width: 3px; background: #00b9c6; border-radius: 2px; }
-.sd-vl-r { width: 3px; background: #d12026; border-radius: 2px; }
+.sd-vl-t { width: 4px; background: #00b9c6; border-radius: 0; }
+.sd-vl-r { width: 4px; background: #d12026; border-radius: 0; }
 .sd-heading {
-  position: absolute; left: 72px; top: 50%; transform: translateY(-50%);
-  font-size: 5rem; font-weight: 900; color: #7acfda; line-height: 1;
-  letter-spacing: -0.02em; white-space: nowrap;
+  position: absolute; left: 55px; top: 42%; transform: translateY(-50%);
+  font-size: 5.5rem; font-weight: 900; color: #7acfda; line-height: 1;
+  letter-spacing: -0.02em; white-space: nowrap; text-decoration: none;
 }
-.sd-demo-card {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  display: flex; align-items: center; gap: 14px;
-  background: rgba(0,185,198,.08); border: 1px solid rgba(0,185,198,.3);
-  border-radius: 12px; padding: 16px 24px; width: max-content; max-width: 600px;
-  text-decoration: none; transition: background .2s;
-}
-.sd-demo-card:hover { background: rgba(0,185,198,.15); }
-.sd-demo-play {
-  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
-  background: rgba(0,185,198,.2); border: 1.5px solid #00b9c6;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1rem; color: #00b9c6;
-}
-.sd-demo-title { font-size: .82rem; font-weight: 700; color: #e2e8f0; line-height: 1.3; }
-.sd-demo-sub   { font-size: .68rem; color: #64748b; margin-top: 3px; }
+.sd-demo-card { display: none; }
 .sd-brand {
-  position: absolute; bottom: 28px; left: 44px;
+  position: absolute; bottom: 48px; left: 36px;
   font-size: .88rem; font-weight: 600; color: #fff;
   font-family: 'Inter', sans-serif; letter-spacing: .02em;
 }
@@ -1105,9 +1087,9 @@
 <div class="slide slide-divider">
 
   <!-- EPAM CT logo -->
-  <div style="position:absolute;top:36px;left:44px;">
-    <svg width="38" height="36" viewBox="0 0 56 36" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="3,0 53,0 28,30" fill="#CC2B1D"/>
+  <div style="position:absolute;top:22px;left:32px;">
+    <svg width="46" height="40" viewBox="0 0 46 40" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="0,0 46,0 23,40" fill="#CC2B1D"/>
     </svg>
   </div>
 
@@ -1117,19 +1099,10 @@
     <div class="sd-vl-r"></div>
   </div>
 
-  <!-- Heading: left edge, vertically centered -->
-  <div class="sd-heading">Demo</div>
-
-  <!-- Recording card: absolute H+V center -->
-  <a class="sd-demo-card"
+  <!-- Heading: left, vertically at 42% — click to open recording -->
+  <a class="sd-heading"
      href="TriStar CTC Hackathon-20260405_235435-Meeting Recording.mp4"
-     target="_blank">
-    <div class="sd-demo-play">▶</div>
-    <div>
-      <div class="sd-demo-title">TriStar CTC Hackathon — Meeting Recording</div>
-      <div class="sd-demo-sub">TriStar CTC Hackathon-20260405_235435-Meeting Recording.mp4</div>
-    </div>
-  </a>
+     target="_blank">Demo</a>
 
   <!-- Footer -->
   <div class="sd-brand">&lt;epam&gt;</div>
@@ -1159,9 +1132,9 @@
 <div class="slide slide-divider">
 
   <!-- EPAM CT logo -->
-  <div style="position:absolute;top:36px;left:44px;">
-    <svg width="38" height="36" viewBox="0 0 56 36" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="3,0 53,0 28,30" fill="#CC2B1D"/>
+  <div style="position:absolute;top:22px;left:32px;">
+    <svg width="46" height="40" viewBox="0 0 46 40" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="0,0 46,0 23,40" fill="#CC2B1D"/>
     </svg>
   </div>
 
