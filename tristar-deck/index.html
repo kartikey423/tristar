@@ -387,7 +387,9 @@
 
 /* ── Divider slides (Demo / Thank You) ─────────────────────── */
 .slide-divider {
-  display: block !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   grid-template-columns: unset !important;
   background: #2a2a2a !important;
   position: relative;
@@ -399,7 +401,6 @@
 .sd-vl-t { width: 4px; background: #00b9c6; border-radius: 0; }
 .sd-vl-r { width: 4px; background: #d12026; border-radius: 0; }
 .sd-heading {
-  position: absolute; left: 55px; top: 42%; transform: translateY(-50%);
   font-size: 5.5rem; font-weight: 900; color: #7acfda; line-height: 1;
   letter-spacing: -0.02em; white-space: nowrap; text-decoration: none;
 }
