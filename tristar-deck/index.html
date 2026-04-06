@@ -385,6 +385,50 @@
 .so-out-log  { background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; }
 .so-out-sep  { color:#ccc; font-size:.75rem; }
 
+/* ── Divider slides (Demo / Thank You) ─────────────────────── */
+.slide-divider {
+  display: flex !important;
+  grid-template-columns: unset !important;
+  background: #1e1e1e !important;
+  position: relative;
+}
+.sd-vline-wrap {
+  position: absolute; left: 44px; top: 86px; bottom: 54px;
+  display: flex; gap: 4px;
+}
+.sd-vl-t { width: 3px; background: #00b9c6; border-radius: 2px; }
+.sd-vl-r { width: 3px; background: #d12026; border-radius: 2px; }
+.sd-heading {
+  position: absolute; left: 70px; top: 50%; transform: translateY(-42%);
+  font-size: 5rem; font-weight: 900; color: #7acfda; line-height: 1;
+  letter-spacing: -0.02em;
+}
+.sd-demo-card {
+  position: absolute; left: 70px; top: calc(50% + 64px);
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(0,185,198,.08); border: 1px solid rgba(0,185,198,.3);
+  border-radius: 12px; padding: 12px 20px; max-width: 680px;
+  text-decoration: none; transition: background .2s;
+}
+.sd-demo-card:hover { background: rgba(0,185,198,.15); }
+.sd-demo-play {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(0,185,198,.2); border: 1.5px solid #00b9c6;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; color: #00b9c6;
+}
+.sd-demo-title { font-size: .82rem; font-weight: 700; color: #e2e8f0; line-height: 1.3; }
+.sd-demo-sub   { font-size: .68rem; color: #64748b; margin-top: 3px; }
+.sd-brand {
+  position: absolute; bottom: 28px; left: 44px;
+  font-size: .88rem; font-weight: 600; color: #fff;
+  font-family: 'Inter', sans-serif; letter-spacing: .02em;
+}
+.sd-pg {
+  position: absolute; bottom: 28px; right: 32px;
+  font-size: .6rem; color: #555; font-weight: 700;
+}
+
 /* ── Global small-text overrides ─────────────────────────────── */
 .imet-lbl   { font-size:.72rem !important; }
 .imet-num   { font-size:1.15rem !important; }
@@ -1047,7 +1091,113 @@
     </div>
   </div>
 
+</div><!-- /slide 3 -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 4 — Demo
+     ═══════════════════════════════════════════════════════════ -->
+<div class="slide slide-divider">
+
+  <!-- EPAM CT logo -->
+  <div style="position:absolute;top:36px;left:44px;">
+    <svg width="38" height="36" viewBox="0 0 56 54" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="3,22 53,22 28,52" fill="#CC2B1D"/>
+      <path d="M28,2 L25.5,7.5 L20,5.5 L22.5,10.5 L16,13 L21,15.5 L18,21.5 L23.5,19.5 L22.5,25.5 L28,23 L33.5,25.5 L32.5,19.5 L38,21.5 L35,15.5 L40,13 L33.5,10.5 L36,5.5 L30.5,7.5 Z"
+            fill="#2d7a2d" stroke="white" stroke-width="2.4" stroke-linejoin="round"/>
+      <line x1="28" y1="25.5" x2="28" y2="31" stroke="white" stroke-width="3"/>
+      <line x1="28" y1="25.5" x2="28" y2="31" stroke="#2d7a2d" stroke-width="1.6"/>
+    </svg>
+  </div>
+
+  <!-- Vertical accent lines -->
+  <div class="sd-vline-wrap">
+    <div class="sd-vl-t"></div>
+    <div class="sd-vl-r"></div>
+  </div>
+
+  <!-- Heading -->
+  <div class="sd-heading">Demo</div>
+
+  <!-- Meeting recording link -->
+  <a class="sd-demo-card"
+     href="TriStar CTC Hackathon-20260405_235435-Meeting Recording.mp4"
+     target="_blank">
+    <div class="sd-demo-play">▶</div>
+    <div>
+      <div class="sd-demo-title">TriStar CTC Hackathon — Meeting Recording</div>
+      <div class="sd-demo-sub">TriStar CTC Hackathon-20260405_235435-Meeting Recording.mp4</div>
+    </div>
+  </a>
+
+  <!-- Footer -->
+  <div class="sd-brand">&lt;epam&gt;</div>
+  <div class="sd-pg">4</div>
+
+  <!-- PRESENTER NOTES — Slide 4 -->
+  <div class="p-notes" id="notes-4">
+    <div class="p-notes-bar">
+      <span class="p-notes-ttl">🎤 Presenter Notes — Slide 4: Demo</span>
+      <span class="p-notes-hint">Press <kbd style="background:#222;border:1px solid #444;border-radius:3px;padding:0 4px;font-size:.75em;color:#ccc;">P</kbd> to toggle</span>
+      <span class="p-notes-close" onclick="this.closest('.p-notes').classList.remove('show')">✕ Close</span>
+    </div>
+    <div class="p-notes-grid">
+      <div class="p-note"><strong>Live demo flow:</strong> Show Designer → type a business objective → Claude returns structured OfferBrief in under 2 seconds.</div>
+      <div class="p-note"><strong>Hub state:</strong> Show the offer moving through draft → approved → active lifecycle in real time.</div>
+      <div class="p-note"><strong>Scout activation:</strong> Trigger a context signal (GPS + weather) and show the real-time score crossing 60 → notification fires.</div>
+      <div class="p-note"><strong>Recording:</strong> Full end-to-end demo recorded in the meeting linked on this slide.</div>
+    </div>
+  </div>
+
 </div><!-- /slide 4 -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     SLIDE 5 — Thank You
+     ═══════════════════════════════════════════════════════════ -->
+<div class="slide slide-divider">
+
+  <!-- EPAM CT logo -->
+  <div style="position:absolute;top:36px;left:44px;">
+    <svg width="38" height="36" viewBox="0 0 56 54" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="3,22 53,22 28,52" fill="#CC2B1D"/>
+      <path d="M28,2 L25.5,7.5 L20,5.5 L22.5,10.5 L16,13 L21,15.5 L18,21.5 L23.5,19.5 L22.5,25.5 L28,23 L33.5,25.5 L32.5,19.5 L38,21.5 L35,15.5 L40,13 L33.5,10.5 L36,5.5 L30.5,7.5 Z"
+            fill="#2d7a2d" stroke="white" stroke-width="2.4" stroke-linejoin="round"/>
+      <line x1="28" y1="25.5" x2="28" y2="31" stroke="white" stroke-width="3"/>
+      <line x1="28" y1="25.5" x2="28" y2="31" stroke="#2d7a2d" stroke-width="1.6"/>
+    </svg>
+  </div>
+
+  <!-- Vertical accent lines -->
+  <div class="sd-vline-wrap">
+    <div class="sd-vl-t"></div>
+    <div class="sd-vl-r"></div>
+  </div>
+
+  <!-- Heading -->
+  <div class="sd-heading">Thank You</div>
+
+  <!-- Footer -->
+  <div class="sd-brand">&lt;epam&gt;</div>
+  <div class="sd-pg">5</div>
+
+  <!-- PRESENTER NOTES — Slide 5 -->
+  <div class="p-notes" id="notes-5">
+    <div class="p-notes-bar">
+      <span class="p-notes-ttl">🎤 Presenter Notes — Slide 5: Thank You</span>
+      <span class="p-notes-hint">Press <kbd style="background:#222;border:1px solid #444;border-radius:3px;padding:0 4px;font-size:.75em;color:#ccc;">P</kbd> to toggle</span>
+      <span class="p-notes-close" onclick="this.closest('.p-notes').classList.remove('show')">✕ Close</span>
+    </div>
+    <div class="p-notes-grid">
+      <div class="p-note"><strong>Closing:</strong> "Thank you — TriStar is live on EPAM Garage. The code, the deck and the recording are all linked in Slide 1."</div>
+      <div class="p-note"><strong>Team:</strong> Ram Naresh, Kartikey Puri, Mohit Soni, Riyaj Shaikh — built end-to-end in 24 hours.</div>
+      <div class="p-note"><strong>Q&amp;A:</strong> Happy to walk through any layer — Designer AI, Hub lifecycle, or Scout real-time scoring.</div>
+      <div class="p-note"><strong>Contact:</strong> Reach us via EPAM Garage or the GitHub repo linked on Slide 1.</div>
+    </div>
+  </div>
+
+</div><!-- /slide 5 -->
+
 
 </div><!-- /deck -->
 
