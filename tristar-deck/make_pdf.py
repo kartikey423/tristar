@@ -47,6 +47,14 @@ html, body {{
   page-break-after: avoid !important;
   break-after: avoid !important;
 }}
+.slide-divider {{
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  grid-template-columns: unset !important;
+  background: #2a2a2a !important;
+}}
 .p-notes {{ display: none !important; }}
 * {{
   -webkit-print-color-adjust: exact !important;
@@ -80,7 +88,8 @@ def build_print_html(src: Path) -> str:
     html = html.replace(
         "</body>",
         "<script>document.querySelectorAll('.slide').forEach(function(s){"
-        "s.style.cssText+='opacity:1!important;position:static!important;';});"
+        "var pos=s.classList.contains('slide-divider')?'relative':'static';"
+        "s.style.cssText+='opacity:1!important;position:'+pos+'!important;';});"
         "</script>\n</body>",
         1,
     )
