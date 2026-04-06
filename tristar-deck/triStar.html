@@ -238,19 +238,16 @@ html, body { width: 100%; height: 100vh; overflow: hidden; font-family: 'Inter',
 }
 .sd-vl-t { width: 3px; background: #00b9c6; border-radius: 2px; }
 .sd-vl-r { width: 3px; background: #d12026; border-radius: 2px; }
-.sd-content-row {
-  display: flex; flex-direction: row; align-items: center;
-  gap: 48px; padding-left: 72px;
-}
 .sd-heading {
+  position: absolute; left: 72px; top: 50%; transform: translateY(-50%);
   font-size: 5rem; font-weight: 900; color: #7acfda; line-height: 1;
   letter-spacing: -0.02em; white-space: nowrap;
 }
 .sd-demo-card {
-  position: static; transform: none;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   display: flex; align-items: center; gap: 14px;
   background: rgba(0,185,198,.08); border: 1px solid rgba(0,185,198,.3);
-  border-radius: 12px; padding: 12px 20px; max-width: 680px;
+  border-radius: 12px; padding: 16px 24px; width: max-content; max-width: 600px;
   text-decoration: none; transition: background .2s;
 }
 .sd-demo-card:hover { background: rgba(0,185,198,.15); }
@@ -937,7 +934,7 @@ html, body { width: 100%; height: 100vh; overflow: hidden; font-family: 'Inter',
       <!-- What we built -->
       <div class="tristar-tagline">
         <strong>What we built:</strong> AI-powered three-layer loyalty engine —
-        <strong>Designer</strong> turns plain-English objectives into fraud-validated OfferBriefs;
+        <strong>Designer</strong> turns plain-English objectives into risk-validated OfferBriefs;
         <strong>Hub</strong> tracks lifecycle in Redis; <strong>Scout</strong> activates at the perfect
         moment using GPS, weather &amp; behaviour signals.
         Stack: <strong>React 19 · FastAPI · Claude API · Redis · Azure</strong>.
@@ -1093,7 +1090,7 @@ html, body { width: 100%; height: 100vh; overflow: hidden; font-family: 'Inter',
             <span class="so-harr">→</span>
             <div class="so-node so-n-brief">OfferBrief<br>JSON</div>
             <span class="so-harr">→</span>
-            <div class="so-node so-n-fraud">◇ Fraud<br>Check</div>
+            <div class="so-node so-n-fraud">◇ Risk<br>Check</div>
           </div>
           <div class="so-pf-row">
             <span class="so-pf-pass">✓ Pass → Hub (draft)</span>
@@ -1230,7 +1227,7 @@ html, body { width: 100%; height: 100vh; overflow: hidden; font-family: 'Inter',
         </div>
         <ul class="lp-bullets">
           <li>Generate validated OfferBriefs in seconds — not hours</li>
-          <li>Built-in fraud detection catches over-discounting before launch</li>
+          <li>Built-in risk detection catches over-discounting before launch</li>
           <li>Inventory-driven recommendations increase campaign ROI</li>
           <li>Real-time risk flags surfaced before any offer goes live</li>
         </ul>
@@ -1295,7 +1292,7 @@ html, body { width: 100%; height: 100vh; overflow: hidden; font-family: 'Inter',
           <ul class="rm-items">
             <li>Designer + Hub + Scout core</li>
             <li>Claude API brief generation</li>
-            <li>4-pattern fraud detection</li>
+            <li>4-pattern risk detection</li>
             <li>Real-time context scoring</li>
             <li>JWT auth + Redis + Azure</li>
           </ul>
@@ -1345,7 +1342,7 @@ html, body { width: 100%; height: 100vh; overflow: hidden; font-family: 'Inter',
         <span class="ctx-chip risk">🔒 1 offer / member / hr</span>
         <span class="ctx-chip risk">🔒 No duplicates / 24h</span>
         <span class="ctx-chip risk">🔒 Quiet hrs 10 pm–8 am</span>
-        <span class="ctx-chip risk">🔒 Critical fraud → hard block</span>
+        <span class="ctx-chip risk">🔒 Critical risk → hard block</span>
       </div>
 
       <!-- OWASP compliance note -->
@@ -1399,19 +1396,19 @@ html, body { width: 100%; height: 100vh; overflow: hidden; font-family: 'Inter',
     <div class="sd-vl-r"></div>
   </div>
 
-  <!-- Heading + demo card on same row -->
-  <div class="sd-content-row">
-    <div class="sd-heading">Demo</div>
-    <a class="sd-demo-card"
-       href="TriStar CTC Hackathon-20260405_235435-Meeting Recording.mp4"
-       target="_blank">
-      <div class="sd-demo-play">▶</div>
-      <div>
-        <div class="sd-demo-title">TriStar CTC Hackathon — Meeting Recording</div>
-        <div class="sd-demo-sub">TriStar CTC Hackathon-20260405_235435-Meeting Recording.mp4</div>
-      </div>
-    </a>
-  </div>
+  <!-- Heading: left edge, vertically centered -->
+  <div class="sd-heading">Demo</div>
+
+  <!-- Recording card: absolute H+V center -->
+  <a class="sd-demo-card"
+     href="TriStar CTC Hackathon-20260405_235435-Meeting Recording.mp4"
+     target="_blank">
+    <div class="sd-demo-play">▶</div>
+    <div>
+      <div class="sd-demo-title">TriStar CTC Hackathon — Meeting Recording</div>
+      <div class="sd-demo-sub">TriStar CTC Hackathon-20260405_235435-Meeting Recording.mp4</div>
+    </div>
+  </a>
 
   <!-- Footer -->
   <div class="sd-brand">&lt;epam&gt;</div>
@@ -1453,10 +1450,8 @@ html, body { width: 100%; height: 100vh; overflow: hidden; font-family: 'Inter',
     <div class="sd-vl-r"></div>
   </div>
 
-  <!-- Heading -->
-  <div class="sd-content-row">
-    <div class="sd-heading">Thank You</div>
-  </div>
+  <!-- Heading: left edge, vertically centered -->
+  <div class="sd-heading">Thank You</div>
 
   <!-- Footer -->
   <div class="sd-brand">&lt;epam&gt;</div>
