@@ -388,23 +388,26 @@
 /* ── Divider slides (Demo / Thank You) ─────────────────────── */
 .slide-divider {
   display: flex !important;
-  flex-direction: column !important;
+  flex-direction: row !important;
   align-items: center !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
   grid-template-columns: unset !important;
   background: #1e1e1e !important;
   position: relative;
 }
 .sd-vline-wrap {
   position: absolute; left: 44px; top: 86px; bottom: 54px;
-  display: flex; gap: 4px;
+  display: flex; gap: 5px;
 }
 .sd-vl-t { width: 3px; background: #00b9c6; border-radius: 2px; }
 .sd-vl-r { width: 3px; background: #d12026; border-radius: 2px; }
+.sd-content-row {
+  display: flex; flex-direction: row; align-items: center;
+  gap: 48px; padding-left: 72px;
+}
 .sd-heading {
   font-size: 5rem; font-weight: 900; color: #7acfda; line-height: 1;
-  letter-spacing: -0.02em; white-space: nowrap; text-align: center;
-  margin-bottom: 28px;
+  letter-spacing: -0.02em; white-space: nowrap;
 }
 .sd-demo-card {
   position: static; transform: none;
@@ -1106,12 +1109,8 @@
 
   <!-- EPAM CT logo -->
   <div style="position:absolute;top:36px;left:44px;">
-    <svg width="38" height="36" viewBox="0 0 56 54" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="3,22 53,22 28,52" fill="#CC2B1D"/>
-      <path d="M28,2 L25.5,7.5 L20,5.5 L22.5,10.5 L16,13 L21,15.5 L18,21.5 L23.5,19.5 L22.5,25.5 L28,23 L33.5,25.5 L32.5,19.5 L38,21.5 L35,15.5 L40,13 L33.5,10.5 L36,5.5 L30.5,7.5 Z"
-            fill="#2d7a2d" stroke="white" stroke-width="2.4" stroke-linejoin="round"/>
-      <line x1="28" y1="25.5" x2="28" y2="31" stroke="white" stroke-width="3"/>
-      <line x1="28" y1="25.5" x2="28" y2="31" stroke="#2d7a2d" stroke-width="1.6"/>
+    <svg width="38" height="36" viewBox="0 0 56 36" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="3,0 53,0 28,30" fill="#CC2B1D"/>
     </svg>
   </div>
 
@@ -1121,19 +1120,19 @@
     <div class="sd-vl-r"></div>
   </div>
 
-  <!-- Heading -->
-  <div class="sd-heading">Demo</div>
-
-  <!-- Meeting recording link -->
-  <a class="sd-demo-card"
-     href="TriStar CTC Hackathon-20260405_235435-Meeting Recording.mp4"
-     target="_blank">
-    <div class="sd-demo-play">▶</div>
-    <div>
-      <div class="sd-demo-title">TriStar CTC Hackathon — Meeting Recording</div>
-      <div class="sd-demo-sub">TriStar CTC Hackathon-20260405_235435-Meeting Recording.mp4</div>
-    </div>
-  </a>
+  <!-- Heading + demo card on same row -->
+  <div class="sd-content-row">
+    <div class="sd-heading">Demo</div>
+    <a class="sd-demo-card"
+       href="TriStar CTC Hackathon-20260405_235435-Meeting Recording.mp4"
+       target="_blank">
+      <div class="sd-demo-play">▶</div>
+      <div>
+        <div class="sd-demo-title">TriStar CTC Hackathon — Meeting Recording</div>
+        <div class="sd-demo-sub">TriStar CTC Hackathon-20260405_235435-Meeting Recording.mp4</div>
+      </div>
+    </a>
+  </div>
 
   <!-- Footer -->
   <div class="sd-brand">&lt;epam&gt;</div>
@@ -1164,12 +1163,8 @@
 
   <!-- EPAM CT logo -->
   <div style="position:absolute;top:36px;left:44px;">
-    <svg width="38" height="36" viewBox="0 0 56 54" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="3,22 53,22 28,52" fill="#CC2B1D"/>
-      <path d="M28,2 L25.5,7.5 L20,5.5 L22.5,10.5 L16,13 L21,15.5 L18,21.5 L23.5,19.5 L22.5,25.5 L28,23 L33.5,25.5 L32.5,19.5 L38,21.5 L35,15.5 L40,13 L33.5,10.5 L36,5.5 L30.5,7.5 Z"
-            fill="#2d7a2d" stroke="white" stroke-width="2.4" stroke-linejoin="round"/>
-      <line x1="28" y1="25.5" x2="28" y2="31" stroke="white" stroke-width="3"/>
-      <line x1="28" y1="25.5" x2="28" y2="31" stroke="#2d7a2d" stroke-width="1.6"/>
+    <svg width="38" height="36" viewBox="0 0 56 36" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="3,0 53,0 28,30" fill="#CC2B1D"/>
     </svg>
   </div>
 
@@ -1180,7 +1175,9 @@
   </div>
 
   <!-- Heading -->
-  <div class="sd-heading">Thank You</div>
+  <div class="sd-content-row">
+    <div class="sd-heading">Thank You</div>
+  </div>
 
   <!-- Footer -->
   <div class="sd-brand">&lt;epam&gt;</div>
